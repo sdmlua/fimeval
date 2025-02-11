@@ -11,11 +11,6 @@ The accuracy of the flood inundation mapping (FIM) is critical for model develop
 
 To address these issues, we developed Flood Inundation Mapping Prediction Evaluation Framework (FIMPEF), a Python-based FIM evaluation framework capable of automatically evaluating flood maps from different sources. FIMPEF takes the advantage of comparing multiple target datasets with large benchmark datasets. It includes an option to incorporate permanent waterbodies as non-flood pixels with a user input file or pre-set dataset. In addition to traditional evaluation metrics, it can also compare the number of buildings inundated using a user input file or a pre-set dataset.
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/7cbe7691-c680-43d5-99bf-6ac788670921" width="500" />
-</p>
-
-
 ## Framework Usage
 
 This framework is published as a python package in PyPI (https://pypi.org/project/fimpef/).For directly using the package, the user can install this package using python package installer 'pip' and can import on their workflows:
@@ -32,30 +27,38 @@ Import the package to the jupyter notebook or any python IDE.
 ```bash
 #Import the package
 import fimpef as fp
-from pathlib import Path    #For path management
 ```
 
-# Repository Structure
+## Framework structure
+The architecture of the ```fimpef``` integrates different modules to which helps the automation of flood evaluation.
 ```bash
-FIMPEF/
-├── Input Rasters/
-│   └── Case 1/ 
-│       └── RG_benchmark.tif  (Benchmark FIM (B-FIM) for Hurricane Mathew, Oct 09, 2016, North Carolina. Make sure to enter the name 'benchmark' while naming the raster)
-│       └── OWP_09_NC.tif     (Model FIM (M-FIM) for Hurricane Mathew, Oct 09, 2016, North Carolina. (NOAA OWP HAND FIM))
-├── PWB/
-│   └── PWB.shp               (Shapefile of Permanent Water Bodies)
-├── BuildingFootprint/
-│   └── NC_bldg.shp            (Geopackage of building footprints.The building footprint used is Microsoft release under Open Data Commons Open Database Liocence. Here is the link https://automaticknowledge.co.uk/us-building-footprints/ User can download the building footprints of the desired states from this link.)
-├── FIMPEFfunctions.py         (Contains all functions associated with the notebook)
-├── FIMPEF.ipynb               (The main notebook code to get FIM)
-├── FIMPEF_package.ipynb       (FIMPEF package version 0.1.2)
-└── README.md                  (This file)
+fimpef/     
+├── docs/                       # Documentation (contains 'FIMserv' Tool usage sample codes)
+│   └── sampledata/             # Contains the sample data to demonstrate how this frameworks works                      
+├── src/
+│   └── fimpef/         
+│       ├──BuildingFootprint/ # Contains the evaluation of model predicted FIM with microsoft building footprint
+│       │   └── evaluationwithBF.py       
+│       └── ContingencyMap/      # Contains all the metrics calculation and contingency map generation
+│           ├── evaluationFIM.py # main evaluation moodule 
+│           └── methods.py  # Contains 3 different methods of evaluation 
+│           └── metrics.py  # metrics calculation module
+│           └── plotevaluationmetrics.py  # use to vizualize the different performance metrics
+│           └── printcontingency.py  # prints the contingency map to quickly generate the Map layout
+│           └── PWBs3.py  # module which helps to get permanent water bodies from s3 bucket
+└── tests/                  # Includes test cases for different functionality
 ```
+The graphical representation of fimpef pipeline can be summarized as follows.
+
+<div align="center">
+  <img width="900" alt="image" src="./Images/flowchart.jpg">
+</div>
+
 # Main Directory Structure
 The main directory contains the primary folder for storing the  case studies. If there is one case study, user can directly pass the case study folder as the main directory. Each case study folder must include a B-FIM  with a 'benchmark' name assigned in it and different M-FIM in tif format. 
 For mutilple case studies,the main directory should contain the seperate folders for individual case studies.For example, if a user has two case studies they should create two seperate folders as shown in the Figure below.
 <div align="center">
-  <img width="300" alt="image" src="https://github.com/user-attachments/assets/3329baf0-e5d4-4f54-a5a2-278c34b68ac8">
+  <img width="350" alt="image" src="./Images/directorystructure.png">
 </div>
 
 ```bash
