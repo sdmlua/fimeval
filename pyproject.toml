@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "fimpef"
+version = "0.1.40"
+description = "A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation"
+authors = [
+    "Surface Dynamics Modeling Lab",
+    "Supath Dhital <sdhital@crimson.ua.edu>",
+    "Deepshika Devi <ddevi@ua.edu>"
+]
+maintainers = [
+    "Supath Dhital <sdhital@crimson.ua.edu>"
+]
+license = "GPLv3"
+readme = "README.md"
+
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pytest = "^8.3.3"
+rasterio = "^1.4.2"
+numpy = "<2"
+geopandas = "^1.0.1"
+shapely = "^2.0.6"
+pathlib = "^1.0.1"
+matplotlib = "^3.9.2"
+plotly = "^5.24.1"
+kaleido = "0.2.1"
+nbformat = "^5.10.4"
+pyproj = "^3.7.0"
+notebook = "^7.3.2"
+msfootprint = "^0.1.26"
+boto3 = "^1.36.16"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
