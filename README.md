@@ -78,7 +78,7 @@ User can enter the following methods
 
 1. 'smallest_extent'
 2. 'convex_hull'
-3. 'AOI' -User defined boundary
+3. 'AOI' - User defined boundary (might be any format)
    
 ```bash
 method_name = "smallest_extent"
@@ -129,10 +129,8 @@ The outputs of the building footprint analysis generated in .CSV format and .png
 </p>
 
 ## Citation
-
 If you use this repository or its components in your work, please cite it as follows:
 
-Dipsikha Devi, Supath Dhital, Dinuke Munasinghe, Anupal Baruah, Sagy Cohen. "FIMPEF" GitHub, 2024, .https://github.com/dipsikha-devi/FIMPEF
 ### **Acknowledgements**
 | | |
 | --- | --- |

@@ -5,10 +5,11 @@ description = "A Framework for Automatic Evaluation of Flood Inundation Mapping 
 authors = [
     "Surface Dynamics Modeling Lab",
     "Supath Dhital <sdhital@crimson.ua.edu>",
-    "Deepshika Devi <ddevi@ua.edu>"
+    "Dipshika Devi <ddevi@ua.edu>"
 ]
 maintainers = [
     "Supath Dhital <sdhital@crimson.ua.edu>"
+    "Dipshika Devi <ddevi@ua.edu>"
 ]
 license = "GPLv3"
 readme = "README.md"
