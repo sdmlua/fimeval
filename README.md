@@ -128,9 +128,6 @@ The outputs of the building footprint analysis generated in .CSV format and .png
   <img src="https://github.com/user-attachments/assets/e0348548-e380-422e-9b97-c0b859ac6ac7" width="500" />
 </p>
 
-## Citation
-If you use this repository or its components in your work, please cite it as follows:
-
 ### **Acknowledgements**
 | | |
 | --- | --- |
