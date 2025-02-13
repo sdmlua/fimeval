@@ -1,35 +1,26 @@
 # Flood Inundation Mapping Predictions Evaluation Framework (FIMPEF)
 
+[![Version](https://img.shields.io/github/v/release/sdmlua/fimpef)](https://github.com/sdmlua/fimpef/releases)
+[![Issues](https://img.shields.io/github/issues/sdmlua/fimpef)](https://github.com/sdmlua/fimpef/issues)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fsdmlua%2Ffimpef&count_bg=%231A93AE&title_bg=%23E48A8A&icon=clyp.svg&icon_color=%23E7E7E7&title=Views&edge_flat=false)](https://hits.seeyoufarm.com)
+[![PyPI version](https://badge.fury.io/py/fimpef.svg?icon=si%3Apython)](https://badge.fury.io/py/fimpef)
+[![PyPI Downloads](https://static.pepy.tech/badge/fimpef)](https://pepy.tech/projects/fimpef)
+
 | | |
 | --- | --- |
 | <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="300"></a> | This repository provides a user-friendly Python package and source code for the automatic evaluation of flood inundation maps. It is developed under Surface Dynamics Modeling Lab (SDML), Department of Geography and the Environment at The University of Alabama, United States.
  
 
-## Background
+## **Background**
 
 The accuracy of the flood inundation mapping (FIM) is critical for model development and disaster preparedness. The evaluation of flood maps from different sources using geospatial platforms can be tedious and requires repeated processing and analysis for each map. These preprocessing steps include extracting the correct flood extent, assigning the same projection system to all the maps, categorizing the maps as binary flood maps, removal of permanent water bodies, etc. This manual data processing is cumbersome and prone to human error.
 
 To address these issues, we developed Flood Inundation Mapping Prediction Evaluation Framework (FIMPEF), a Python-based FIM evaluation framework capable of automatically evaluating flood maps from different sources. FIMPEF takes the advantage of comparing multiple target datasets with large benchmark datasets. It includes an option to incorporate permanent waterbodies as non-flood pixels with a user input file or pre-set dataset. In addition to traditional evaluation metrics, it can also compare the number of buildings inundated using a user input file or a pre-set dataset.
 
-## Framework Usage
 
-This framework is published as a python package in PyPI (https://pypi.org/project/fimpef/).For directly using the package, the user can install this package using python package installer 'pip' and can import on their workflows:
 
-```bash
-#Install to use this framework
-pip install fimpef
-
-#Use this framework in your workflows using poetry
-poetry add fimpef
-```
-Import the package to the jupyter notebook or any python IDE.
-
-```bash
-#Import the package
-import fimpef as fp
-```
-
-## Framework structure
+## **Framework structure**
 The architecture of the ```fimpef``` integrates different modules to which helps the automation of flood evaluation.
 ```bash
 fimpef/     
@@ -54,21 +45,41 @@ The graphical representation of fimpef pipeline can be summarized as follows.
   <img width="900" alt="image" src="./Images/flowchart.jpg">
 </div>
 
-# Main Directory Structure
+## **Main Directory Structure**
 The main directory contains the primary folder for storing the  case studies. If there is one case study, user can directly pass the case study folder as the main directory. Each case study folder must include a B-FIM  with a 'benchmark' name assigned in it and different M-FIM in tif format. 
 For mutilple case studies,the main directory should contain the seperate folders for individual case studies.For example, if a user has two case studies they should create two seperate folders as shown in the Figure below.
 <div align="center">
   <img width="350" alt="image" src="./Images/directorystructure.png">
 </div>
 
+## **Framework Usage**
+
+This framework is published as a python package in PyPI (https://pypi.org/project/fimpef/).For directly using the package, the user can install this package using python package installer 'pip' and can import on their workflows:
+
+```bash
+#Install to use this framework
+pip install fimpef
+
+#Use this framework in your workflows using poetry
+poetry add fimpef
+```
+Import the package to the jupyter notebook or any python IDE.
+
+```bash
+#Import the package
+import fimpef as fp
+```
+**The main directory multiple folders for each case study containing the benchmark and candidate (model predicted or any flood map) or direct flood maps depending upon the user requirement. The structure is mentioned in [Main Directory Structure](#main-directory-structure)**.
+
 ```bash
 Main_dir = Path('./Main_dir')
 ```
 
-## Permanent Water Bodies
-In this work the 'USA Detailed Water Bodies' from ARCGIS hub is used. Here is the link https://hub.arcgis.com/datasets/esri::usa-detailed-water-bodies/about. User can input their own permanent water bodies shapefile as .shp and .gpkg format. User need to assign the shapefile of the permanent water bodies as -
+## **Permanent Water Bodies (PWB)**
+**In this work the 'USA Detailed Water Bodies' from ARCGIS hub is used. Here is the link https://hub.arcgis.com/datasets/esri::usa-detailed-water-bodies/about. It is integrated within the framework for CONtiguous United States (CONUS) with SDML S3 bucket (https://sdmlab.ciroh.org/index.html#PWB/)**
+**If user have more precise PWB, they can input their own PWB boundary as .shp and .gpkg format and need to assign the shapefile of the PWB-**
 ```bash
-PWD_dir = Path('./ESRI_PWB/USA_Detailed_Water_Bodies.shp')
+PWD_dir = Path('./path/to/PWB.shp')
 ```
 ## Methods for Extracting Flood Extents
 Smallest raster: The framework will first check all the raster extents (benchmark and FIMs). It will then determine the smallest among all the rasters. A shape file will then be created to mask all the rasters.
