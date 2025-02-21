@@ -1,4 +1,4 @@
-# Flood Inundation Mapping Predictions Evaluation Framework (FIMPEF)
+## Flood Inundation Mapping Predictions Evaluation Framework (FIMPEF)
 
 [![Version](https://img.shields.io/github/v/release/sdmlua/fimpef)](https://github.com/sdmlua/fimpef/releases)
 [![Issues](https://img.shields.io/github/issues/sdmlua/fimpef)](https://github.com/sdmlua/fimpef/issues)
@@ -12,7 +12,7 @@
 | <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="300"></a> | This repository provides a user-friendly Python package and source code for the automatic evaluation of flood inundation maps. It is developed under Surface Dynamics Modeling Lab (SDML), Department of Geography and the Environment at The University of Alabama, United States.
  
 
-## **Background**
+### **Background**
 
 The accuracy of the flood inundation mapping (FIM) is critical for model development and disaster preparedness. The evaluation of flood maps from different sources using geospatial platforms can be tedious and requires repeated processing and analysis for each map. These preprocessing steps include extracting the correct flood extent, assigning the same projection system to all the maps, categorizing the maps as binary flood maps, removal of permanent water bodies, etc. This manual data processing is cumbersome and prone to human error.
 
@@ -20,7 +20,7 @@ To address these issues, we developed Flood Inundation Mapping Prediction Evalua
 
 
 
-## **Framework structure**
+### **Framework structure**
 The architecture of the ```fimpef``` integrates different modules to which helps the automation of flood evaluation.
 ```bash
 fimpef/     
@@ -40,7 +40,7 @@ fimpef/
 │           └── PWBs3.py  # module which helps to get permanent water bodies from s3 bucket
 └── tests/                  # Includes test cases for different functionality
 ```
-The graphical representation of fimpef pipeline can be summarized as follows.
+The graphical representation of fimpef pipeline can be summarized as follows in **```Figure 1```**. Here, it will show all the steps incorporated within the ```fimpef``` during packaging and all functionality are interconnected to each other, resulting the automation of the framework.
 
 <div align="center">
   <img width="900" alt="image" src="./Images/flowchart.jpg">
@@ -53,7 +53,7 @@ For mutilple case studies,the main directory should contain the seperate folders
   <img width="350" alt="image" src="./Images/directorystructure.png">
 </div>
 
-## **Framework Usage**
+## **Framework Installation and Usage**
 
 This framework is published as a python package in PyPI (https://pypi.org/project/fimpef/).For directly using the package, the user can install this package using python package installer 'pip' and can import on their workflows:
 
