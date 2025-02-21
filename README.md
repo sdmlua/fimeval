@@ -26,7 +26,7 @@ The architecture of the ```fimpef``` integrates different modules to which helps
 fimpef/     
 ├── docs/                       # Documentation (contains 'FIMserv' Tool usage sample codes)
 │   └── sampledata/              # Contains the sample data to demonstrate how this frameworks works    
-│   └── code_usage.ipynb            #Sample code usage of the Evaluation framework        
+│   └── fimpef_usage.ipynb            #Sample code usage of the Evaluation framework        
 ├── src/
 │   └── fimpef/         
 │       ├──BuildingFootprint/ # Contains the evaluation of model predicted FIM with microsoft building footprint

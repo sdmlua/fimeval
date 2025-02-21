@@ -8,7 +8,7 @@ authors = [
     "Dipshika Devi <ddevi@ua.edu>"
 ]
 maintainers = [
-    "Supath Dhital <sdhital@crimson.ua.edu>"
+    "Supath Dhital <sdhital@crimson.ua.edu>",
     "Dipshika Devi <ddevi@ua.edu>"
 ]
 license = "GPLv3"

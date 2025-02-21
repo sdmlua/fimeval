@@ -3,9 +3,7 @@ from pathlib import Path
 
 Main_dir = "/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SampleData/Data/NeuseBigger"
 PWD_dir = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/PWB/USA_Detailed_Water_Bodies.shp"
-output_dir = (
-    "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/Output"
-)
+output_dir = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/Output"
 
 building_footprint = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/BuildingFootprint/building_footprint.gpkg"
 
@@ -36,9 +34,9 @@ fp.EvaluateFIM(Main_dir,method_name, output_dir)
 # Plot rhe evaluation metrics after the FIM evaluation
 # fp.PlotEvaluationMetrics(Main_dir, method_name, output_dir)
 # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset)
-fp.EvaluationWithBuildingFootprint(
-    Main_dir, method_name, output_dir, country=countryISO
-)
+# fp.EvaluationWithBuildingFootprint(
+#     Main_dir, method_name, output_dir, country=countryISO
+# )
 
 # If user have their own building footprint dataset, they can use it as well
 # fp.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint = building_footprint, shapefile_dir=AOI)
