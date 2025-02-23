@@ -36,7 +36,7 @@ jobs:
 
       - name: Check Formatting (Optional)
         run: |
-          poetry --check
+          black --check .
 
       - name: Linting (Optional)
         run: |
