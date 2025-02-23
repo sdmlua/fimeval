@@ -17,6 +17,7 @@ from .methods import AOI, smallest_extent, convex_hull, get_smallest_raster_path
 from .metrics import evaluationmetrics
 from .PWBs3 import get_PWB
 
+
 # Function for the evalution of the model
 def evaluateFIM(
     benchmark_path, candidate_paths, gdf, folder, method, output_dir, shapefile=None
@@ -320,7 +321,7 @@ def evaluateFIM(
 
 def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=None):
     main_dir = Path(main_dir)
-    
+
     # Read the permanent water bodies
     if PWB_dir is None:
         gdf = get_PWB()

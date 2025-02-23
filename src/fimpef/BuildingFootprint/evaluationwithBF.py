@@ -8,6 +8,7 @@ from pathlib import Path
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
+
 def Changeintogpkg(input_path, output_dir, layer_name):
     input_path = str(input_path)
     # Check if the file is already in GPKG format
@@ -20,6 +21,7 @@ def Changeintogpkg(input_path, output_dir, layer_name):
         gdf.to_file(output_gpkg, driver="GPKG")
         return output_gpkg
 
+
 def Changeintogpkg(input_path, output_dir, layer_name):
     input_path = str(input_path)
     if input_path.endswith(".gpkg"):
@@ -29,6 +31,7 @@ def Changeintogpkg(input_path, output_dir, layer_name):
         output_gpkg = os.path.join(output_dir, f"{layer_name}.gpkg")
         gdf.to_file(output_gpkg, driver="GPKG")
         return output_gpkg
+
 
 def GetFloodedBuildingCountInfo(
     building_fp_path,
@@ -306,13 +309,14 @@ def EvaluationWithBuildingFootprint(
                 building_footprintMS = building_footprint
                 if building_footprintMS is None:
                     import msfootprint as msf
+
                     out_dir = os.path.join(method_path, "BuildingFootprint")
                     if not os.path.exists(out_dir):
                         os.makedirs(out_dir)
                     EX_building_footprint = find_existing_footprint(out_dir)
                     if not EX_building_footprint:
                         boundary_dir = shapefile_dir if shapefile_dir else boundary
-            
+
                         msf.BuildingFootprintwithISO(country, boundary_dir, out_dir)
                         building_footprintMS = os.path.join(
                             out_dir, f"building_footprint.gpkg"
@@ -361,7 +365,9 @@ def EvaluationWithBuildingFootprint(
                                 boundary_dir = (
                                     shapefile_dir if shapefile_dir else boundary
                                 )
-                                msf.BuildingFootprintwithISO(country, boundary_dir, out_dir)
+                                msf.BuildingFootprintwithISO(
+                                    country, boundary_dir, out_dir
+                                )
                                 building_footprintMS = os.path.join(
                                     out_dir, f"building_footprint.gpkg"
                                 )

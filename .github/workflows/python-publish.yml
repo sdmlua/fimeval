@@ -1,21 +1,16 @@
 #For the development and code testing
-name: Dev Checks
+name: Package Build and Test
 
 on:
   push:
     branches:
-      - main
-      - dev
-  pull_request:
-    branches:
-      - main
-      - dev
+      - main 
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  dev-check:
+  release-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,10 +29,14 @@ jobs:
       - name: Install Dependencies (Development Mode)
         run: |
           poetry install --no-root
+      
+      - name: Install Black
+        run: |
+          pip install black
 
       - name: Check Formatting (Optional)
         run: |
-          poetry run black --check .
+          poetry --check .
 
       - name: Linting (Optional)
         run: |

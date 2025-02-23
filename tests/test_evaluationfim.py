@@ -1,14 +1,16 @@
 import fimpef as fp
 from pathlib import Path
 
-Main_dir = "/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SampleData/Data/NeuseBigger"
+Main_dir = (
+    "/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SampleData/Data/NeuseBigger"
+)
 PWD_dir = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/PWB/USA_Detailed_Water_Bodies.shp"
 output_dir = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/Output"
 
 building_footprint = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/BuildingFootprint/building_footprint.gpkg"
 
 # If user is working with user defined shapefile
-AOI  = '/Users/supath/Downloads/MSResearch/CNN/SurrogatModeling/DataPrep/Shapefile/NeuseRiver.shp'
+AOI = "/Users/supath/Downloads/MSResearch/CNN/SurrogatModeling/DataPrep/Shapefile/NeuseRiver.shp"
 
 # Three methods are available to evaluate the FIM,
 # 1. Smallest extent
@@ -16,12 +18,12 @@ AOI  = '/Users/supath/Downloads/MSResearch/CNN/SurrogatModeling/DataPrep/Shapefi
 # 3. AOI (User defined shapefile)
 method_name = "smallest_extent"
 
-#3 letter country ISO code
+# 3 letter country ISO code
 countryISO = "USA"
 
 # Run the evaluation
-#It has the Permanent Water Bodies (PWB) dataset as default for United States
-fp.EvaluateFIM(Main_dir,method_name, output_dir)
+# It has the Permanent Water Bodies (PWB) dataset as default for United States
+fp.EvaluateFIM(Main_dir, method_name, output_dir)
 
 # OR, If the Evaluation Study Area is outside the US or, user has their own PWB dataset
 # fp.EvaluateFIM(Main_dir, method_name, output_dir, PWB_dir=PWD_dir)
