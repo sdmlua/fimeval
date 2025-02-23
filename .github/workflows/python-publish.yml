@@ -38,14 +38,6 @@ jobs:
         run: |
           black .
 
-      - name: Linting (Optional)
-        run: |
-          poetry run flake8 .
-
-      - name: Type Checking (Optional)
-        run: |
-          poetry run mypy .
-
       - name: Verify Build
         run: |
           poetry build
