@@ -1,4 +1,5 @@
 ## Flood Inundation Mapping Predictions Evaluation Framework (FIMPEF)
+<hr style="border: 1px solid black; margin: 0;">  
 
 [![Version](https://img.shields.io/github/v/release/sdmlua/fimpef)](https://github.com/sdmlua/fimpef/releases)
 [![Issues](https://img.shields.io/github/issues/sdmlua/fimpef)](https://github.com/sdmlua/fimpef/issues)
@@ -13,6 +14,7 @@
  
 
 ### **Background**
+<hr style="border: 1px solid black; margin: 0;">  
 
 The accuracy of the flood inundation mapping (FIM) is critical for model development and disaster preparedness. The evaluation of flood maps from different sources using geospatial platforms can be tedious and requires repeated processing and analysis for each map. These preprocessing steps include extracting the correct flood extent, assigning the same projection system to all the maps, categorizing the maps as binary flood maps, removal of permanent water bodies, etc. This manual data processing is cumbersome and prone to human error.
 
@@ -20,13 +22,16 @@ To address these issues, we developed Flood Inundation Mapping Prediction Evalua
 
 
 
-### **Framework structure**
-The architecture of the ```fimpef``` integrates different modules to which helps the automation of flood evaluation.
+### **Repository structure**
+<hr style="border: 1px solid black; margin: 0;">  
+
+The architecture of the ```fimpef``` integrates different modules to which helps the automation of flood evaluation. All those modules codes are in source (```src``` ) folder.
 ```bash
 fimpef/     
 ├── docs/                       # Documentation (contains 'FIMserv' Tool usage sample codes)
 │   └── sampledata/              # Contains the sample data to demonstrate how this frameworks works    
-│   └── fimpef_usage.ipynb            #Sample code usage of the Evaluation framework        
+│   └── fimpef_usage.ipynb            #Sample code usage of the Evaluation framework
+├── Images/                       # have sample images for documentation       
 ├── src/
 │   └── fimpef/         
 │       ├──BuildingFootprint/ # Contains the evaluation of model predicted FIM with microsoft building footprint
@@ -45,15 +50,10 @@ The graphical representation of fimpef pipeline can be summarized as follows in 
 <div align="center">
   <img width="900" alt="image" src="./Images/flowchart.jpg">
 </div>
+Figure 1: Flowchart showing the entire framework pipeline.
 
-## **Main Directory Structure**
-The main directory contains the primary folder for storing the  case studies. If there is one case study, user can directly pass the case study folder as the main directory. Each case study folder must include a B-FIM  with a 'benchmark' name assigned in it and different M-FIM in tif format. 
-For mutilple case studies,the main directory should contain the seperate folders for individual case studies.For example, if a user has two case studies they should create two seperate folders as shown in the Figure below.
-<div align="center">
-  <img width="350" alt="image" src="./Images/directorystructure.png">
-</div>
-
-## **Framework Installation and Usage**
+### **Framework Installation and Usage**
+<hr style="border: 1px solid black; margin: 0;">  
 
 This framework is published as a python package in PyPI (https://pypi.org/project/fimpef/).For directly using the package, the user can install this package using python package installer 'pip' and can import on their workflows:
 
@@ -70,78 +70,75 @@ Import the package to the jupyter notebook or any python IDE.
 #Import the package
 import fimpef as fp
 ```
-**The main directory multiple folders for each case study containing the benchmark and candidate (model predicted or any flood map) or direct flood maps depending upon the user requirement. The structure is mentioned in [Main Directory Structure](#main-directory-structure)**.
+**Note: The framework usage provided in detailed in [Here (docs/fimpef_usage.ipynb)](./docs/fimpef_usage.ipynb)**. It has detail documentation from installation, setup, running- until results.
 
+#### **Main Directory Structure**
+The main directory contains the primary folder for storing the  case studies. If there is one case study, user can directly pass the case study folder as the main directory. Each case study folder must include a Benchmark FIM (B-FIM)  with a 'benchmark' word  assigned within the B-FIM file and different Model Predicted FIM (M-FIM)
+in tif format. 
+For mutilple case studies,the main directory could be structure in such a way that contain the seperate folders for individual case studies.For example, if a user has two case studies they should create two seperate folders as shown in the Figure below.
+<div align="center">
+  <img width="350" alt="image" src="./Images/directorystructure.png">
+</div>
+Figure 2: Main directory structure for one and multiple case study.
+
+This directory can be defined as follows while running framework.
 ```bash
-Main_dir = Path('./Main_dir')
+main_dir = Path('./path/to/main/dir')
 ```
 
-## **Permanent Water Bodies (PWB)**
-**In this work the 'USA Detailed Water Bodies' from ARCGIS hub is used. Here is the link https://hub.arcgis.com/datasets/esri::usa-detailed-water-bodies/about. It is integrated within the framework for CONtiguous United States (CONUS) with SDML S3 bucket (https://sdmlab.ciroh.org/index.html#PWB/)**
-**If user have more precise PWB, they can input their own PWB boundary as .shp and .gpkg format and need to assign the shapefile of the PWB-**
+#### **Permanent Water Bodies (PWB)**
+This framework uses PWB to first to delineate the PWB in the FIM and assign into different class so that the evaluation will be more fair. For the Contiguous United States (CONUS), the PWB is already integrated within the framework however, if user have more accurate PWB or using fimpef for outside US they can initialize and use PWB within fimpef framework. Currently it is using PWB publicly hosted by ESRI: https://hub.arcgis.com/datasets/esri::usa-detailed-water-bodies/about
+
+If user have more precise PWB, they can input their own PWB boundary as .shp and .gpkg format and need to assign the shapefile of the PWB and define directory as,
 ```bash
-PWD_dir = Path('./path/to/PWB.shp')
+PWD_dir = Path('./path/to/PWB/vector/file')
 ```
-## Methods for Extracting Flood Extents
-Smallest raster: The framework will first check all the raster extents (benchmark and FIMs). It will then determine the smallest among all the rasters. A shape file will then be created to mask all the rasters.
+#### **Methods for Extracting Flood Extents**
+1. **```smallest_extent```**  
+   The framework will first check all the raster extents (benchmark and FIMs). It will then determine the smallest among all the rasters. A shape file will then be created to mask all the rasters.
 
-Convex Hull : Another provision of determining flood extent is the generation of the minimum bounding polygon along the valid shapes. The framework will select the smallest raster extent followed by the generation of the valid vector shapes from the raster. It will then generate the convex hull (minimum bounding polygon along the valid shapes).
+2. **```convex_hull```**  
+   Another provision of determining flood extent is the generation of the minimum bounding polygon along the valid shapes. The framework will select the smallest raster extent followed by the generation of the valid vector shapes from the raster. It will then generate the convex hull (minimum bounding polygon along the valid shapes).
 
-User-Defined vector flood extent : User can give input an already pre-defined flood extent vector file.
+3. **```AOI```**  
+   User can give input  an already pre-defined flood extent vector file. This method will only be valid if user is working with their own evaluation boundary, 
 
-User can enter the following methods
+Depending upon user preference, they need to pass those method name as a argument while running the evaluation.
 
-1. 'smallest_extent'
-2. 'convex_hull'
-3. 'AOI' - User defined boundary (might be any format)
-   
+The FIM evaluation extent for ```smallest_extent``` and ```convex_hull``` can be seen in below **Figure 3** which is GIS layout version of an contengency map output of `EvaluateFIM` module defined in Table 1. 
+<div align="center">
+  <img width="600" alt="image" src="./Images/methodslayout.jpg">
+</div>
+Figure 3: Layout showing the difference between smallest extent and convex hull FIM extent and evaluation result.
+
+Methods can be defined as follows.
 ```bash
 method_name = "smallest_extent"
 ```
-For the method 'AOI', user need to pass the shapefile of the AOI.
 
+For the method 'AOI', user also need to pass the shapefile of the AOI along with method name as AOI.
 ```bash
-AOI  = Path('./AOI.shp')
+#For AOI based FIM evaluation
+method_name = "AOI"
+AOI  = Path('./path/to/AOI/vectorfile')
 ```
-## Executing the Evaluation Module
-User can directly run the evaluation module of FIMPEF by calling the function EvaluateFIM.
 
-```bash
-fp.EvaluateFIM(Main_dir, PWD_dir, method_name)
-```
-The outputs from the function EvaluateFIM includes generated files in TIFF, SHP, CSV, and PNG formats, all stored within the output folder. Users can visualize the TIFF files using any geospatial platform. The TIFF files consist of the binary Benchmark-FIM (Benchmark.tif), Model-FIM (Candidate.tif), and Agreement-FIM (Contingency.tif). The shp files contain the boundary of the generated flood extent. For better understanding,users can print the agreement maps and the evaluation scores as png using the functions PrintContingencyMap and PlotEvaluationMetrics.
+#### **Executing the Evaluation framework**
+The complete description of different modules, what they are meant for, arguments taken to run that module and what will be the end results from each is described in below **Table 1**. If user import `fimpef` framework as `fp` into workflows, they can call each module mentioned in **Table 1** as `fp.Module_Name(args)`. Here arguments in italic represents the optional field, depending upon the user requirement.
 
-```bash
-fp.PrintContingencyMap(Main_dir, method_name)
-```
+Table 1: Modules in `fimpef` are in order of execution.
+| Module Name | Objective | Arguments | Outputs |
+|------------|-----------|-----------|-----------|
+| `EvaluateFIM` | It runs all the evaluation of FIM between B-FIM and M-FIMs. | `main_dir`: Main directory containing the case study folders, <br> `method_name`: How users wants to evaluate their FIM, <br> `outpur_dir`: Output directory where all the results and the intermidiate files will be saved for further calculation, <br>  *`PWB_dir`*: The permanenet water bodies vectory file directory if user wants to user their own boundary.|The outputs includes generated files in TIFF, SHP, CSV, and PNG formats, all stored within the output folder. Users can visualize the TIFF files using any geospatial platform. The TIFF files consist of the binary Benchmark-FIM (Benchmark.tif), Model-FIM (Candidate.tif), and Agreement-FIM (Contingency.tif). The shp files contain the boundary of the generated flood extent.|
+| `PlotContingencyMap` | For better understanding, It will print the agreement maps derived in first step. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding contingency raster for printing.| This prints the contingency map showing different class of evaluation (TP, FP, no data, PWB etc). The outputs look like- Figure 4 first row.|
+| `PlotEvaluationMetrics` | For quick understanding of the evaluation metrics, to plot bar of evaluation scores. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding file for printing based on all those info.| This prints the bar plots which includes different performance metrics calculated by EvaluateFIM module. The outputs look like- Figure 4 second row.|
+| `EvaluationWithBuildingFootprint` | For Building Footprint Analysis, user can specify shapefile of building footprints as .shp or .gpkg format. By default it consider global Microsoft building footprint dataset. Those data are hosted in Google Earth Engine (GEE) so, It pops up to authenticate the GEE account, please allow it and it will download the data based on evaluation boundary and evaluation is done. | `main_dir`, `method_name`, `output_dir`: Those arguments are as it is, same as all other modules. <br> *`building_footprint`*: If user wants to use their own building footprint file then pass the directory here, *`country`*: It is the 3 letter based country ISO code (eg. 'USA', NEP' etc), for the building data automation using GEE based on the evaluation extent, *`shapefile_dir`*: this is the directory of user defined AOI if user is working with their own boundary and automatic Building footprint download and evaluation. | It will calculate the different metrics (e.g. TP, FP, CSI, F1, Accuracy etc) based on hit and miss of building on different M-FIM and B-FIM. Those all metrics will be saved as CSV format in `output_dir` and finally using that info it prints the counts of building foorpint in each FIMs as well as scenario on the evaluation end via bar plot.|
+
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/a1cfeb14-45b2-4c77-96d4-7ce3ae82c3e8" width="350" />
+  <img src="./Images/methodsresults_combined.jpg" width="750" />
 </p>
 
-```bash
-fp.PlotEvaluationMetrics(Main_dir, method_name)
-```
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/5e6bdd33-8b4c-4ec7-9bc9-18fcd1e39cdb" width="450" />
-</p> 
-
-## Evaluation of Building Footprints
-The building footprint used is Microsoft release under Open Data Commons Open Database Licence. Here is the link https://automaticknowledge.co.uk/us-building-footprints/ User can download the building footprints of the desired states from this link. If the user already have a building footprint shapefile, user can pass the building footprint as .shp or .gpkg. For building footprint evaluation with B-FIM, users can use the function EvaluationWithBuildingFootprint.
-
-```bash
-building_footprint = Path('./BuildingFootprint.gpkg/.shp')
-fp.EvaluationWithBuildingFootprint(Main_dir, method_name, building_footprint= building_footprint)
-```
-Another flexibility of FIMPEF that it already has the msfootprint package that will allow the users to automatically evaluate the buildings without passing the building shapefile. To utilize this functionality, the users should have a valid Google Earth Engine account.The user need to specify the country name before executing this function. For more detail of this package user can go through the following link ().
-
-```bash
-country = 'US'
-fp.EvaluationWithBuildingFootprint(Main_dir, method_name, country= country)
-```
-The outputs of the building footprint analysis generated in .CSV format and .png format and stored in the output folder.
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/e0348548-e380-422e-9b97-c0b859ac6ac7" width="500" />
-</p>
+Figure 4: Combined raw output from framework for different two method. First row (subplot a and b) and second row (subplot c and d) is contingency maps and evaluation metrics of FIM derived using `PrintContingencyMaP` and `PlotEvaluationMetrics` module. Third row (subplot e and f) is the output after processing and calculating of evaluation with BF by unsing `EvaluateWithBuildingFoorprint` module.
 
 ### **Acknowledgements**
 | | |
