@@ -1,0 +1,52 @@
+#For the development and code testing
+name: Dev Checks
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  dev-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Poetry
+        run: |
+          pip install poetry
+
+      - name: Install Dependencies (Development Mode)
+        run: |
+          poetry install --no-root
+
+      - name: Check Formatting (Optional)
+        run: |
+          poetry run black --check .
+
+      - name: Linting (Optional)
+        run: |
+          poetry run flake8 .
+
+      - name: Type Checking (Optional)
+        run: |
+          poetry run mypy .
+
+      - name: Verify Build
+        run: |
+          poetry build
