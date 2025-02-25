@@ -2,15 +2,15 @@ import fimpef as fp
 from pathlib import Path
 
 Main_dir = (
-    "/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SampleData/Data/NeuseBigger"
+    "../docs/sampledata"
 )
-PWD_dir = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/PWB/USA_Detailed_Water_Bodies.shp"
-output_dir = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/Output"
+PWD_dir = "./path/to/PWB"
+output_dir = "../docs/Output"
 
-building_footprint = "/Users/supath/Downloads/MSResearch/FIMPEF/CodeUsage/SampleData/BuildingFootprint/building_footprint.gpkg"
+building_footprint = "./path/to/building_footprint"
 
 # If user is working with user defined shapefile
-AOI = "/Users/supath/Downloads/MSResearch/CNN/SurrogatModeling/DataPrep/Shapefile/NeuseRiver.shp"
+AOI = "./path/to/shapefile"
 
 # Three methods are available to evaluate the FIM,
 # 1. Smallest extent

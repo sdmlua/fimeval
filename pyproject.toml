@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fimpef"
-version = "0.1.40"
+version = "0.1.41"
 description = "A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation"
 authors = [
     "Surface Dynamics Modeling Lab",

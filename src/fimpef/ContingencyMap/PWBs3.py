@@ -1,25 +1,18 @@
 #import Libraries
 import geopandas as gpd
 import boto3
+import botocore
 import os
 import tempfile
 
-#Access Credentials
-aws_access_key = "**************************"
-aws_secret_key = "**************************"
-region_name = "us-east-1"
-
-#S3 Bucket Info
-bucket_name = 'sdmlab'
-pwb_folder = "PWB/"
-
-# Initialize S3 client with explicit credentials
+# Initialize an anonymous S3 client
 s3 = boto3.client(
     's3',
-    aws_access_key_id=aws_access_key,
-    aws_secret_access_key=aws_secret_key,
-    region_name=region_name
+    config=botocore.config.Config(signature_version=botocore.UNSIGNED)
 )
+
+bucket_name = 'sdmlab'
+pwb_folder = "PWB/"  
 
 def PWB_inS3(s3_client, bucket, prefix):
     """Download all components of a shapefile from S3 into a temporary directory."""
