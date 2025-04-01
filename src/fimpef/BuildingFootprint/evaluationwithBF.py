@@ -279,7 +279,17 @@ def find_existing_footprint(out_dir):
     gpkg_files = list(Path(out_dir).glob("*.gpkg"))
     return gpkg_files[0] if gpkg_files else None
 
-
+#Incase user defined individual shapefile for each case study
+def detect_shapefile(folder):
+        shapefile = None
+        for ext in (".shp", ".gpkg", ".geojson", ".kml"):
+            for file in os.listdir(folder):
+                if file.lower().endswith(ext):
+                    shapefile = os.path.join(folder, file)
+                    print(f"Auto-detected shapefile: {shapefile}")
+                    return shapefile
+        return None
+    
 def EvaluationWithBuildingFootprint(
     main_dir,
     method_name,
@@ -301,10 +311,14 @@ def EvaluationWithBuildingFootprint(
 
                 if shapefile_dir:
                     boundary = shapefile_dir
-                else:
+                elif os.path.exists(
+                    os.path.join(method_path, "BoundaryforEvaluation")
+                ):
                     boundary = os.path.join(
                         method_path, "BoundaryforEvaluation", "FIMEvaluatedExtent.shp"
                     )
+                else:
+                    boundary = detect_shapefile(main_dir)
 
                 building_footprintMS = building_footprint
                 if building_footprintMS is None:
@@ -346,12 +360,14 @@ def EvaluationWithBuildingFootprint(
 
                         if shapefile_dir:
                             boundary = shapefile_dir
-                        else:
+                        elif os.path.exists(
+                            os.path.join(method_path, "BoundaryforEvaluation")
+                        ):
                             boundary = os.path.join(
-                                method_path,
-                                "BoundaryforEvaluation",
-                                "FIMEvaluatedExtent.shp",
+                                method_path, "BoundaryforEvaluation", "FIMEvaluatedExtent.shp"
                             )
+                        else:
+                            boundary = detect_shapefile(folder)
 
                         building_footprintMS = building_footprint
                         if building_footprintMS is None:

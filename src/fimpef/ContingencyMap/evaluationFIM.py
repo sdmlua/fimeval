@@ -53,10 +53,28 @@ def evaluateFIM(
     # Get the smallest matched raster extent and make a boundary shapefile
     smallest_raster_path = get_smallest_raster_path(benchmark_path, *candidate_paths)
 
+    #If method is AOI, and direct shapefile directory is not provided, then it will search for the shapefile in the folder
     if method.__name__ == "AOI":
+        # If shapefile is not provided, search in the folder
+        if shapefile is None:
+            for ext in (".shp", ".gpkg", ".geojson", ".kml"):
+                for file in os.listdir(folder):
+                    if file.lower().endswith(ext):
+                        shapefile = os.path.join(folder, file)
+                        print(f"Auto-detected shapefile: {shapefile}")
+                        break
+                if shapefile:
+                    break
+            if shapefile is None:
+                raise FileNotFoundError(
+                    "No shapefile (.shp, .gpkg, .geojson, .kml) found in the folder and none provided. Either provide a shapefile directory or put shapefile inside folder directory."
+                )
+
+        # Run AOI with the found or provided shapefile
         bounding_geom = AOI(benchmark_path, shapefile, save_dir)
+
     else:
-        print(f"---{method.__name__} is processing---")
+        print(f"--- {method.__name__} is processing ---")
         bounding_geom = method(smallest_raster_path, save_dir=save_dir)
 
     # Read and process benchmark raster

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fimpef"
-version = "0.1.41"
+version = "0.1.42"
 description = "A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation"
 authors = [
     "Surface Dynamics Modeling Lab",
@@ -29,7 +29,7 @@ kaleido = "0.2.1"
 nbformat = "^5.10.4"
 pyproj = "^3.7.0"
 notebook = "^7.3.2"
-msfootprint = "^0.1.26"
+msfootprint = "^0.1.27"
 boto3 = "^1.36.16"
 
 [build-system]
