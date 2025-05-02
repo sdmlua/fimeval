@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 import geopandas as gpd
 import rasterio
+import shutil
 import pandas as pd
 from rasterio.warp import reproject, Resampling
 from rasterio.io import MemoryFile
@@ -16,7 +17,7 @@ warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
 from .methods import AOI, smallest_extent, convex_hull, get_smallest_raster_path
 from .metrics import evaluationmetrics
 from .PWBs3 import get_PWB
-from ..utilis import compress_tif_lzw
+from ..utilis import MakeFIMsUniform
 
 # Function for the evalution of the model
 def evaluateFIM(
@@ -338,7 +339,7 @@ def evaluateFIM(
 
 
 
-def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=None):
+def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=None, target_crs=None, target_resolution=None):
     main_dir = Path(main_dir)
     # Read the permanent water bodies
     if PWB_dir is None:
@@ -352,14 +353,14 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
 
         if len(tif_files) == 2:
             for tif_file in tif_files:
-                if "benchmark" in tif_file.name.lower():
+                if "benchmark" in tif_file.name.lower() or "BM" in tif_file.name:
                     benchmark_path = tif_file
                 else:
                     candidate_path.append(tif_file)
 
         elif len(tif_files) > 2:
             for tif_file in tif_files:
-                if "benchmark" in tif_file.name.lower():
+                if "benchmark" in tif_file.name.lower() or "BM" in tif_file.name:
                     benchmark_path = tif_file
                     print(f"---Benchmark: {tif_file.name}---")
                 else:
@@ -383,17 +384,29 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
             )
 
     # Check if main_dir directly contains tif files
-
-    
     TIFFfiles_main_dir = list(main_dir.glob("*.tif"))
     if TIFFfiles_main_dir:
-        process_TIFF(TIFFfiles_main_dir, main_dir)
+        MakeFIMsUniform(main_dir, target_crs=target_crs, target_resolution=target_resolution)
+
+        #processing folder
+        processing_folder = main_dir / "processing"
+        TIFFfiles = list(processing_folder.glob("*.tif"))
+
+        process_TIFF(TIFFfiles, main_dir)
+        shutil.rmtree(processing_folder)
     else:
         for folder in main_dir.iterdir():
             if folder.is_dir():
                 tif_files = list(folder.glob("*.tif"))
+                
                 if tif_files:
-                    process_TIFF(tif_files, folder)
+                    MakeFIMsUniform(folder, target_crs=target_crs, target_resolution=target_resolution)
+                    #processing folder
+                    processing_folder = folder / "processing"
+                    TIFFfiles = list(processing_folder.glob("*.tif"))
+
+                    process_TIFF(TIFFfiles, folder)
+                    shutil.rmtree(processing_folder)
                 else:
                     print(
                         f"Skipping {folder.name} as it doesn't contain any tif files."

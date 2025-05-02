@@ -3,11 +3,14 @@ from pathlib import Path
 
 Main_dir = (
     # "../docs/sampledata"
-    '/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SampleData/Data/Neuse'
+    '/Users/Supath/Downloads/SDML/FIMeval/FIMS'
 )
 PWD_dir = "./path/to/PWB"
 # output_dir = "../docs/Output"
-output_dir = '/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SampleData/Output'
+output_dir = '/Users/Supath/Downloads/SDML/FIMeval/output'
+target_crs = "EPSG:5070" # Target CRS for reprojecting the FIMs, need to be in EPSG code of Projected CRS
+target_resolution = 30 #This will be in meters, if it passes the FIMS will be resampled to this resolution else, it will find the coarser resolution among all FIMS for this case and use that to resample!
+
 
 building_footprint = "./path/to/building_footprint"
 
@@ -18,7 +21,7 @@ building_footprint = "./path/to/building_footprint"
 # 1. Smallest extent
 # 2. Convex Hull
 # 3. AOI (User defined shapefile)
-method_name = "AOI"
+method_name = "smallest_extent"
 
 # 3 letter country ISO code
 countryISO = "USA"
@@ -31,12 +34,16 @@ fp.EvaluateFIM(Main_dir, method_name, output_dir)
 # fp.EvaluateFIM(Main_dir, method_name, output_dir, PWB_dir=PWD_dir)
 
 
+#If the FIMS are not in projected crs or are in different spatial resolution
+fp.EvaluateFIM(Main_dir, method_name, output_dir, PWB_dir=PWD_dir, target_crs=target_crs, target_resolution=target_resolution)
+
 # Once the FIM evaluation is done, print the contingency map
 fp.PrintContingencyMap(Main_dir, method_name, output_dir)
 
 
 # Plot rhe evaluation metrics after the FIM evaluation
 fp.PlotEvaluationMetrics(Main_dir, method_name, output_dir)
+
 # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset)
 fp.EvaluationWithBuildingFootprint(
     Main_dir, method_name, output_dir, country=countryISO
