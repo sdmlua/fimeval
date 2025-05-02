@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
 from .methods import AOI, smallest_extent, convex_hull, get_smallest_raster_path
 from .metrics import evaluationmetrics
 from .PWBs3 import get_PWB
-
+from ..utilis import compress_tif_lzw
 
 # Function for the evalution of the model
 def evaluateFIM(
@@ -337,9 +337,9 @@ def evaluateFIM(
     return results
 
 
+
 def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=None):
     main_dir = Path(main_dir)
-
     # Read the permanent water bodies
     if PWB_dir is None:
         gdf = get_PWB()
@@ -383,8 +383,9 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
             )
 
     # Check if main_dir directly contains tif files
-    TIFFfiles_main_dir = list(main_dir.glob("*.tif"))
 
+    
+    TIFFfiles_main_dir = list(main_dir.glob("*.tif"))
     if TIFFfiles_main_dir:
         process_TIFF(TIFFfiles_main_dir, main_dir)
     else:
