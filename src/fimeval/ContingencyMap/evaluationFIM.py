@@ -226,7 +226,7 @@ def evaluateFIM(
                             extract_c = np.where(mask2, out_image2, 0)
                             extract_c = np.where(extract_c > 0, 1, 0)
                             idx_pwc = np.where(extract_c == 1)
-                            out_image2[idx_pwc] = -1
+                            out_image2[idx_pwc] = 5
                             out_image2_resized = resize_image(
                                 out_image2,
                                 out_transform2,

@@ -18,7 +18,7 @@ def getContingencyMap(raster_path, method_path):
     combined_flood = np.full_like(band1, fill_value=1, dtype=int)
 
     # Map pixel values to colors
-    combined_flood[band1 == -1] = 0
+    combined_flood[band1 == 5] = 0
     combined_flood[band1 == 0] = 1
     combined_flood[band1 == 1] = 2
     combined_flood[band1 == 2] = 3
@@ -60,12 +60,11 @@ def getContingencyMap(raster_path, method_path):
 
     # Create legend patches
     value_labels = {
-        0: "Permanent Water",
-        1: "No Data",
-        2: "True Negative",
-        3: "False Positive",
-        4: "False Negative",
-        5: "True Positive",
+        1: "True negative",
+        2: "False positive",
+        3: "False negative",
+        4: "True positive",
+        5: "Permanent water bodies"
     }
     legend_patches = [
         Patch(
