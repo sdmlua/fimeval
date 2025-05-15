@@ -40,7 +40,6 @@ def evaluateFIM(
     Merged = []
     Unique = []
     FAR_values = []
-    Dice_values = []
 
     # Dynamically call the specified method
     method = globals().get(method)
@@ -255,7 +254,6 @@ def evaluateFIM(
                 FPR,
                 merged,
                 FAR,
-                Dice,
             ) = evaluationmetrics(out_image1, out_image2_resized)
 
             # Append values to the lists
@@ -275,7 +273,6 @@ def evaluateFIM(
             Merged.append(merged)
             Unique.append(unique_values)
             FAR_values.append(FAR)
-            Dice_values.append(Dice)
 
     results = {
         "CSI_values": csi_values,
@@ -294,7 +291,6 @@ def evaluateFIM(
         # 'Merged': Merged,
         #  'Unique': Unique
         "FAR_values": FAR_values,
-        "Dice_values": Dice_values,
     }
     for candidate_idx, candidate_path in enumerate(candidate_paths):
         candidate_BASENAME = os.path.splitext(os.path.basename(candidate_path))[0]
