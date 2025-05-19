@@ -132,6 +132,7 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
             for src_path in tif_files:
                 dst_path = processing_folder / src_path.name
                 reprojectFIMs(str(src_path), str(dst_path), target_crs)
+                compress_tif_lzw(dst_path)
         else:
             all_within_conus = all(is_within_conus(bounds_list[i], crs_list[i]) for i in range(len(bounds_list)))
 
@@ -148,7 +149,6 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
         for src_path in tif_files:
             dst_path = processing_folder / src_path.name
             shutil.copy(src_path, dst_path)
-            compress_tif_lzw(dst_path)
     
     # Resolution check and resampling
     processed_tifs = list(processing_folder.glob('*.tif'))
@@ -170,7 +170,6 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
                 for src_path in processed_tifs:
                     resample_to_resolution(str(src_path), target_resolution, target_resolution)
             else:
-                print("FIMs are in different resolution after projection. \n")
                 coarser_x = max(res[0] for res in resolutions)
                 coarser_y = max(res[1] for res in resolutions)
                 print(f"Using coarser resolution: X={coarser_x}, Y={coarser_y}. Resampling all FIMS to this resolution.")

@@ -18,12 +18,12 @@ def getContingencyMap(raster_path, method_path):
     combined_flood = np.full_like(band1, fill_value=1, dtype=int)
 
     # Map pixel values to colors
-    combined_flood[band1 == 5] = 0
-    combined_flood[band1 == 0] = 1
-    combined_flood[band1 == 1] = 2
-    combined_flood[band1 == 2] = 3
-    combined_flood[band1 == 3] = 4
-    combined_flood[band1 == 4] = 5
+    combined_flood[band1 == 5] = 5
+    combined_flood[band1 == 0] = 0
+    combined_flood[band1 == 1] = 1
+    combined_flood[band1 == 2] = 2
+    combined_flood[band1 == 3] = 3
+    combined_flood[band1 == 4] = 4
 
     # Handle NoData explicitly, mapping it to "No Data" class (1)
     if nodata_value is not None:
@@ -42,7 +42,7 @@ def getContingencyMap(raster_path, method_path):
     ys_dd = np.array(latitudes).reshape(ys.shape)
 
     # Define the color map and normalization
-    flood_colors = ["black", "white", "grey", "green", "blue", "red"]  # 6 classes
+    flood_colors = ["white", "grey", "green", "blue", "red", "black"]  # 6 classes
     flood_cmap = mcolors.ListedColormap(flood_colors)
     flood_norm = mcolors.BoundaryNorm(
         boundaries=np.arange(-0.5, 6.5, 1), ncolors=len(flood_colors)
@@ -60,6 +60,7 @@ def getContingencyMap(raster_path, method_path):
 
     # Create legend patches
     value_labels = {
+        0: "No data",
         1: "True negative",
         2: "False positive",
         3: "False negative",

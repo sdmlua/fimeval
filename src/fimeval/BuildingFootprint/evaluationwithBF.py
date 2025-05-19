@@ -21,18 +21,6 @@ def Changeintogpkg(input_path, output_dir, layer_name):
         gdf.to_file(output_gpkg, driver="GPKG")
         return output_gpkg
 
-
-def Changeintogpkg(input_path, output_dir, layer_name):
-    input_path = str(input_path)
-    if input_path.endswith(".gpkg"):
-        return input_path
-    else:
-        gdf = gpd.read_file(input_path)
-        output_gpkg = os.path.join(output_dir, f"{layer_name}.gpkg")
-        gdf.to_file(output_gpkg, driver="GPKG")
-        return output_gpkg
-
-
 def GetFloodedBuildingCountInfo(
     building_fp_path,
     study_area_path,
@@ -51,8 +39,17 @@ def GetFloodedBuildingCountInfo(
     building_gdf = gpd.read_file(building_fp_gpkg)
     study_area_gdf = gpd.read_file(study_area_path)
 
-    if building_gdf.crs != study_area_gdf.crs:
-        building_gdf = building_gdf.to_crs(study_area_gdf.crs)
+    with rasterio.open(raster1_path) as src:
+        target_crs = str(src.crs)
+
+    # Reproject all GeoDataFrames to the target CRS
+    if building_gdf.crs != target_crs:
+        building_gdf = building_gdf.to_crs(target_crs)
+        print("reproject building_gdf")
+
+    if study_area_gdf.crs != target_crs:
+        study_area_gdf = study_area_gdf.to_crs(target_crs)
+        print("reproject study_area_gdf")
 
     clipped_buildings = gpd.overlay(building_gdf, study_area_gdf, how="intersection")
     clipped_buildings["centroid"] = clipped_buildings.geometry.centroid
@@ -85,7 +82,7 @@ def GetFloodedBuildingCountInfo(
                         elif pixel_value == 4:
                             centroid_counts["True Positive"] += 1
 
-    if "benchmark" in str(raster1_path).lower():
+    if "bm" in str(raster1_path).lower():
         count_centroids_in_raster(raster1_path, "Benchmark")
         count_centroids_in_raster(raster2_path, "Candidate")
     elif "candidate" in str(raster2_path).lower():
@@ -220,46 +217,32 @@ def GetFloodedBuildingCountInfo(
     print(f"Performance metrics chart is saved as PNG at {output_path}")
     fig.show()
 
-
 def process_TIFF(
     tif_files, contingency_files, building_footprint, boundary, method_path
 ):
     benchmark_path = None
-    candidate_path = []
+    candidate_paths = []
 
-    if len(tif_files) == 2:
-        for tif_file in tif_files:
-            if "benchmark" in tif_file.name.lower():
+    for tif_file in tif_files:
+        if "bm" in tif_file.name.lower() or "benchmark" in tif_file.name.lower():
+            if benchmark_path is None:
                 benchmark_path = tif_file
             else:
-                candidate_path.append(tif_file)
+                candidate_paths.append(tif_file)
+        else:
+            candidate_paths.append(tif_file)
 
-    elif len(tif_files) > 2:
-        for tif_file in tif_files:
-            if "benchmark" in tif_file.name.lower():
-                benchmark_path = tif_file
-                print(f"---Benchmark: {tif_file.name}---")
-            else:
-                candidate_path.append(tif_file)
-
-    if benchmark_path and candidate_path:
-        for candidate in candidate_path:
-
+    if benchmark_path and candidate_paths:
+        for candidate in candidate_paths:
             matching_contingency_map = None
             candidate_base_name = candidate.stem.replace("_clipped", "")
 
             for contingency_file in contingency_files:
                 if candidate_base_name in contingency_file.name:
                     matching_contingency_map = contingency_file
-                    print(
-                        f"Found matching contingency map for candidate {candidate.name}: {contingency_file.name}"
-                    )
                     break
 
             if matching_contingency_map:
-                print(
-                    f"---FIM evaluation with Building Footprint starts for {candidate.name}---"
-                )
                 GetFloodedBuildingCountInfo(
                     building_footprint,
                     boundary,
@@ -273,8 +256,11 @@ def process_TIFF(
                 print(
                     f"No matching contingency map found for candidate {candidate.name}. Skipping..."
                 )
-
-
+    elif not benchmark_path:
+        print("Warning: No benchmark file found.")
+    elif not candidate_paths:
+        print("Warning: No candidate files found.")
+        
 def find_existing_footprint(out_dir):
     gpkg_files = list(Path(out_dir).glob("*.gpkg"))
     return gpkg_files[0] if gpkg_files else None
@@ -337,7 +323,6 @@ def EvaluationWithBuildingFootprint(
                         )
                     else:
                         building_footprintMS = EX_building_footprint
-
                 process_TIFF(
                     tif_files,
                     contingency_files,
