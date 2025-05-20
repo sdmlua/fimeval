@@ -352,7 +352,7 @@ def EvaluationWithBuildingFootprint(
                                 method_path, "BoundaryforEvaluation", "FIMEvaluatedExtent.shp"
                             )
                         else:
-                            boundary = detect_shapefile(folder)
+                            boundary = detect_shapefile(os.path.join(main_dir, folder))
 
                         building_footprintMS = building_footprint
                         if building_footprintMS is None:
