@@ -333,7 +333,16 @@ def evaluateFIM(
     print(f"Evaluation metrics saved to {csv_file}")
     return results
 
-
+#Safely deleting the folder
+def safe_delete_folder(folder_path):
+    try:
+        shutil.rmtree(folder_path)
+    except PermissionError:
+        print(f"Permission denied: Could not delete {folder_path}")
+    except FileNotFoundError:
+        print(f"Folder not found: {folder_path}")
+    except Exception as e:
+        print(f"Error deleting {folder_path}: {e}")
 
 def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=None, target_crs=None, target_resolution=None):
     main_dir = Path(main_dir)
@@ -384,12 +393,12 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
     if TIFFfiles_main_dir:
         MakeFIMsUniform(main_dir, target_crs=target_crs, target_resolution=target_resolution)
 
-        #processing folder
+        # processing folder
         processing_folder = main_dir / "processing"
         TIFFfiles = list(processing_folder.glob("*.tif"))
 
         process_TIFF(TIFFfiles, main_dir)
-        shutil.rmtree(processing_folder)
+        safe_delete_folder(processing_folder)
     else:
         for folder in main_dir.iterdir():
             if folder.is_dir():
@@ -397,13 +406,12 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
                 
                 if tif_files:
                     MakeFIMsUniform(folder, target_crs=target_crs, target_resolution=target_resolution)
-                    #processing folder
+                    
                     processing_folder = folder / "processing"
                     TIFFfiles = list(processing_folder.glob("*.tif"))
 
                     process_TIFF(TIFFfiles, folder)
-                    shutil.rmtree(processing_folder)
+                    safe_delete_folder(processing_folder)
                 else:
-                    print(
-                        f"Skipping {folder.name} as it doesn't contain any tif files."
-                    )
+                    print(f"Skipping {folder.name} as it doesn't contain any tif files.")
+
