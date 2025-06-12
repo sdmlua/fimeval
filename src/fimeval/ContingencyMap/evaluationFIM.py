@@ -4,6 +4,8 @@ from pathlib import Path
 import geopandas as gpd
 import rasterio
 import shutil
+import subprocess
+import platform
 import pandas as pd
 from rasterio.warp import reproject, Resampling
 from rasterio.io import MemoryFile
@@ -18,6 +20,30 @@ from .methods import AOI, smallest_extent, convex_hull, get_smallest_raster_path
 from .metrics import evaluationmetrics
 from .PWBs3 import get_PWB
 from ..utilis import MakeFIMsUniform
+
+#giving the permission to the folder
+def is_writable(path):
+    """Check if the directory and its contents are writable."""
+    path = Path(path)
+    return os.access(path, os.W_OK)
+
+def fix_permissions(path):
+    path = Path(path).resolve()
+    script_path = Path(__file__).parent / "fix_permissions.sh"
+
+    if not script_path.exists():
+        raise FileNotFoundError(f"Shell script not found: {script_path}")
+
+    if is_writable(path):
+        return 
+
+    try:
+        result = subprocess.run(["bash", str(script_path), str(path)],
+                                check=True, capture_output=True, text=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Shell script failed:\n{e.stderr}")
+
 
 # Function for the evalution of the model
 def evaluateFIM(
@@ -351,7 +377,12 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
         gdf = get_PWB()
     else:
         gdf = gpd.read_file(PWB_dir)
+    
+    #Grant the permission to the main directory
+    print(f"Fixing permissions for {main_dir}...")
+    fix_permissions(main_dir)
 
+    #runt the process
     def process_TIFF(tif_files, folder_dir):
         benchmark_path = None
         candidate_path = []
