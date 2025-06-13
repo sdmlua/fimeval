@@ -85,6 +85,7 @@ def GetFloodedBuildingCountInfo(
     if "bm" in str(raster1_path).lower():
         count_centroids_in_raster(raster1_path, "Benchmark")
         count_centroids_in_raster(raster2_path, "Candidate")
+        
     elif "candidate" in str(raster2_path).lower():
         count_centroids_in_raster(raster1_path, "Candidate")
         count_centroids_in_raster(raster2_path, "Benchmark")
@@ -105,6 +106,9 @@ def GetFloodedBuildingCountInfo(
     CSI = TP / (TP + FP + FN) if (TP + FP + FN) > 0 else 0
     FAR = FP / (TP + FP) if (TP + FP) > 0 else 0
     POD = TP / (TP + FN) if (TP + FN) > 0 else 0
+    
+    
+    BDR = (centroid_counts["Candidate"]- centroid_counts["Benchmark"])/centroid_counts["Benchmark"]
 
     counts_data = {
         "Category": [
@@ -116,6 +120,7 @@ def GetFloodedBuildingCountInfo(
             "CSI",
             "FAR",
             "POD",
+            "Building Deviation Ratio",
         ],
         "Building Count": [
             centroid_counts["Candidate"],
@@ -126,6 +131,7 @@ def GetFloodedBuildingCountInfo(
             f"{CSI:.3f}",
             f"{FAR:.3f}",
             f"{POD:.3f}",
+            f"{BDR:.3f}",
         ],
     }
 
