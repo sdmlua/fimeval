@@ -95,7 +95,6 @@ def evaluateFIM(
                 raise FileNotFoundError(
                     "No shapefile (.shp, .gpkg, .geojson, .kml) found in the folder and none provided. Either provide a shapefile directory or put shapefile inside folder directory."
                 )
-
         # Run AOI with the found or provided shapefile
         bounding_geom = AOI(benchmark_path, shapefile, save_dir)
 
@@ -361,6 +360,7 @@ def evaluateFIM(
 
 #Safely deleting the folder
 def safe_delete_folder(folder_path):
+    fix_permissions(folder_path)
     try:
         shutil.rmtree(folder_path)
     except PermissionError:

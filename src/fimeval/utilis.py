@@ -1,3 +1,4 @@
+import os
 import shutil
 import pyproj
 import rasterio
@@ -70,11 +71,18 @@ def reprojectFIMs(src_path, dst_path, target_crs):
 
 #Resample into the coarser resoution amoung all FIMS within the case
 def resample_to_resolution(src_path, x_resolution, y_resolution):
+    src_path = Path(src_path)
+    print(src_path)
+    temp_path = src_path.with_name(src_path.stem + "_resampled.tif")
+    print(temp_path)
+
     with rasterio.open(src_path) as src:
-        transform = rasterio.transform.from_origin(src.bounds.left, src.bounds.top, x_resolution, y_resolution)
+        transform = rasterio.transform.from_origin(
+            src.bounds.left, src.bounds.top,
+            x_resolution, y_resolution
+        )
         width = int((src.bounds.right - src.bounds.left) / x_resolution)
         height = int((src.bounds.top - src.bounds.bottom) / y_resolution)
-
         kwargs = src.meta.copy()
         kwargs.update({
             'transform': transform,
@@ -82,8 +90,8 @@ def resample_to_resolution(src_path, x_resolution, y_resolution):
             'height': height
         })
 
-        dst_path = src_path
-        with rasterio.open(dst_path, 'w', **kwargs) as dst:
+        # Write to temporary file
+        with rasterio.open(temp_path, 'w', **kwargs) as dst:
             for i in range(1, src.count + 1):
                 reproject(
                     source=rasterio.band(src, i),
@@ -94,7 +102,9 @@ def resample_to_resolution(src_path, x_resolution, y_resolution):
                     dst_crs=src.crs,
                     resampling=Resampling.nearest
                 )
-    # compress_tif_lzw(dst_path)
+
+    os.remove(src_path)        # delete original
+    os.rename(temp_path, src_path)  
 
 #Check if the FIMs are in the same CRS or not else do further operation
 def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
@@ -103,79 +113,69 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
     if not tif_files:
         print(f"No TIFF files found in {fim_dir}")
         return
+
+    # Create processing folder to save standardized files
     processing_folder = fim_dir / 'processing'
     processing_folder.mkdir(exist_ok=True)
 
-    crs_list = []
-    projected_status = []
-    bounds_list = []
-    fims_data = []
-
+    # Collect info about each TIFF
+    crs_list, resolutions, bounds_list, projected_flags = [], [], [], []
     for tif_path in tif_files:
         try:
             with rasterio.open(tif_path) as src:
                 crs_list.append(src.crs)
-                projected_status.append(is_projected_crs(src.crs))
+                resolutions.append(src.res)
                 bounds_list.append(src.bounds)
-                fims_data.append((src.bounds, src.crs))
-        except rasterio.RasterioIOError as e:
+                projected_flags.append(is_projected_crs(src.crs))
+        except Exception as e:
             print(f"Error opening {tif_path}: {e}")
             return
 
-    all_projected = all(projected_status)
-    first_crs = crs_list[0] if crs_list else None
-    all_same_crs = all(crs == first_crs for crs in crs_list)
+    #CRS Check & Reproject if needed
+    all_projected = all(projected_flags)
+    all_same_crs = len(set(crs_list)) == 1
 
     if not all_projected or (all_projected and not all_same_crs):
-        if target_crs:
-            print(f"Reprojecting all FIMs to {target_crs}.")
-            for src_path in tif_files:
-                dst_path = processing_folder / src_path.name
-                reprojectFIMs(str(src_path), str(dst_path), target_crs)
-                compress_tif_lzw(dst_path)
-        else:
-            all_within_conus = all(is_within_conus(bounds_list[i], crs_list[i]) for i in range(len(bounds_list)))
-
-            if all_within_conus:
-                default_target_crs = "EPSG:5070"
-                print(f"FIMs are within CONUS, reprojecting all to {default_target_crs} and saving to {processing_folder}")
-                for src_path in tif_files:
-                    dst_path = processing_folder / src_path.name
-                    reprojectFIMs(str(src_path), str(dst_path), default_target_crs)
+        # Decide CRS to use
+        final_crs = target_crs
+        if not final_crs:
+            if all(is_within_conus(b, c) for b, c in zip(bounds_list, crs_list)):
+                final_crs = "EPSG:5070"
+                print(f"Defaulting to CONUS CRS: {final_crs}")
             else:
-                print("All flood maps are not in the projected CRS or are not in the same projected CRS.\n")
-                print("Please provide a target CRS in EPSG format.")
-    else:
+                print("Mixed or non-CONUS CRS detected. Please provide a valid target CRS.")
+                return
+            
+        print(f"Reprojecting all rasters to {final_crs}")
         for src_path in tif_files:
             dst_path = processing_folder / src_path.name
-            shutil.copy(src_path, dst_path)
-    
-    # Resolution check and resampling
-    processed_tifs = list(processing_folder.glob('*.tif'))
-    if processed_tifs:
-        resolutions = []
-        for tif_path in processed_tifs:
-            try:
-                with rasterio.open(tif_path) as src:
-                    resolutions.append(src.res)
-            except rasterio.RasterioIOError as e:
-                print(f"Error opening {tif_path} in processing folder: {e}")
-                return
-
-        first_resolution = resolutions[0] if resolutions else None
-        all_same_resolution = all(res == first_resolution for res in resolutions)
-
-        if not all_same_resolution:
-            if target_resolution is not None:
-                for src_path in processed_tifs:
-                    resample_to_resolution(str(src_path), target_resolution, target_resolution)
-            else:
-                coarser_x = max(res[0] for res in resolutions)
-                coarser_y = max(res[1] for res in resolutions)
-                print(f"Using coarser resolution: X={coarser_x}, Y={coarser_y}. Resampling all FIMS to this resolution.")
-                for src_path in processed_tifs:
-                    resample_to_resolution(str(src_path), coarser_x, coarser_y)
-        else:
-            print("All FIMs in the processing folder have the same resolution.")
+            reprojectFIMs(str(src_path), str(dst_path), final_crs)
+            compress_tif_lzw(dst_path) 
+            
     else:
-        print("No TIFF files found in the processing folder after CRS standardization.")
+        print("All rasters are in the same projected CRS. Copying to processing folder.")
+        for src_path in tif_files:
+            shutil.copy(src_path, processing_folder / src_path.name)
+
+    # Resolution Check & Resample if needed
+    processed_tifs = list(processing_folder.glob('*.tif'))
+    final_resolutions = []
+    for tif_path in processed_tifs:
+        with rasterio.open(tif_path) as src:
+            final_resolutions.append(src.res)
+
+    unique_res = set(final_resolutions)
+    if target_resolution:
+        print(f"Resampling all rasters to target resolution: {target_resolution}m.")
+        for src_path in processed_tifs:
+            resample_to_resolution(str(src_path), target_resolution, target_resolution)
+
+    # Otherwise, only resample if resolutions are inconsistent
+    elif len(unique_res) > 1:
+        coarsest_x = max(res[0] for res in final_resolutions)
+        coarsest_y = max(res[1] for res in final_resolutions)
+        print(f"Using coarsest resolution: X={coarsest_x}, Y={coarsest_y}")
+        for src_path in processed_tifs:
+            resample_to_resolution(str(src_path), coarsest_x, coarsest_y)
+    else:
+        print("All rasters already have the same resolution. No resampling needed.")
