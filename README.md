@@ -34,6 +34,7 @@ fimeval/
 ├── src/
 │   └── fimeval/         
 │       ├──BuildingFootprint/ # Contains the evaluation of model predicted FIM with microsoft building footprint
+│       │   └── microsoftBF.py 
 │       │   └── evaluationwithBF.py       
 │       └── ContingencyMap/      # Contains all the metrics calculation and contingency map generation
 │       │   ├── evaluationFIM.py # main evaluation moodule 
@@ -59,7 +60,8 @@ This framework is published as a python package in PyPI (https://pypi.org/projec
 
 ```bash
 #Install to use this framework
-pip install fimeval
+pip install uv #Makes the downloading much faster
+uv pip install fimeval
 
 #Use this framework in your workflows using poetry
 poetry add fimeval
@@ -132,7 +134,7 @@ Table 1: Modules in `fimeval` are in order of execution.
 | `EvaluateFIM` | It runs all the evaluation of FIM between B-FIM and M-FIMs. | `main_dir`: Main directory containing the case study folders, <br> `method_name`: How users wants to evaluate their FIM, <br> `outpur_dir`: Output directory where all the results and the intermidiate files will be saved for further calculation, <br>  *`PWB_dir`*: The permanenet water bodies vectory file directory if user wants to user their own boundary, <br> *`target_crs`*: this fimeval framework needs the floodmaps to be in projected CRS so define the projected CRS in epsg code format, <br> *`target_resolution`*: sometime if the benchmark is very high resolution than candidate FIMs, it needs heavy computational time, so user can define the resolution if there FIMs are in different spatial resolution, else it will use the coarser resolution among all FIMS within that case. |The outputs includes generated files in TIFF, SHP, CSV, and PNG formats, all stored within the output folder. Users can visualize the TIFF files using any geospatial platform. The TIFF files consist of the binary Benchmark-FIM (Benchmark.tif), Model-FIM (Candidate.tif), and Agreement-FIM (Contingency.tif). The shp files contain the boundary of the generated flood extent.|
 | `PlotContingencyMap` | For better understanding, It will print the agreement maps derived in first step. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding contingency raster for printing.| This prints the contingency map showing different class of evaluation (TP, FP, no data, PWB etc). The outputs look like- Figure 4 first row.|
 | `PlotEvaluationMetrics` | For quick understanding of the evaluation metrics, to plot bar of evaluation scores. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding file for printing based on all those info.| This prints the bar plots which includes different performance metrics calculated by EvaluateFIM module. The outputs look like- Figure 4 second row.|
-| `EvaluationWithBuildingFootprint` | For Building Footprint Analysis, user can specify shapefile of building footprints as .shp or .gpkg format. By default it consider global Microsoft building footprint dataset. Those data are hosted in Google Earth Engine (GEE) so, It pops up to authenticate the GEE account, please allow it and it will download the data based on evaluation boundary and evaluation is done. | `main_dir`, `method_name`, `output_dir`: Those arguments are as it is, same as all other modules. <br> *`building_footprint`*: If user wants to use their own building footprint file then pass the directory here, *`country`*: It is the 3 letter based country ISO code (eg. 'USA', NEP' etc), for the building data automation using GEE based on the evaluation extent, *`shapefile_dir`*: this is the directory of user defined AOI if user is working with their own boundary and automatic Building footprint download and evaluation. | It will calculate the different metrics (e.g. TP, FP, CSI, F1, Accuracy etc) based on hit and miss of building on different M-FIM and B-FIM. Those all metrics will be saved as CSV format in `output_dir` and finally using that info it prints the counts of building foorpint in each FIMs as well as scenario on the evaluation end via bar plot.|
+| `EvaluationWithBuildingFootprint` | For Building Footprint Analysis, user can specify shapefile of building footprints as .shp or .gpkg format. By default it consider global Microsoft building footprint dataset. Those data are hosted in Google Earth Engine (GEE) so, It pops up to authenticate the GEE account, please allow it and it will download the data based on evaluation boundary and evaluation is done. | `main_dir`, `method_name`, `output_dir`: Those arguments are as it is, same as all other modules. <br> *`building_footprint`*: If user wants to use their own building footprint file then pass the directory here, *`country`*: It is the 3 letter based country ISO code (eg. 'USA', NEP' etc), for the building data automation using GEE based on the evaluation extent, *`shapefile_dir`*: this is the directory of user defined AOI if user is working with their own boundary and automatic Building footprint download and evaluation, *`geeprojectID`*: this is the google earth engine google cloud project ID, which helps to access the GEE data and resources to work with building footprint download and process. | It will calculate the different metrics (e.g. TP, FP, CSI, F1, Accuracy etc) based on hit and miss of building on different M-FIM and B-FIM. Those all metrics will be saved as CSV format in `output_dir` and finally using that info it prints the counts of building foorpint in each FIMs as well as scenario on the evaluation end via bar plot.|
 
 <p align="center">
   <img src="./Images/methodsresults_combined.jpg" width="750" />
@@ -140,9 +142,9 @@ Table 1: Modules in `fimeval` are in order of execution.
 
 Figure 4: Combined raw output from framework for different two method. First row (subplot a and b) and second row (subplot c and d) is contingency maps and evaluation metrics of FIM derived using `PrintContingencyMaP` and `PlotEvaluationMetrics` module. Third row (subplot e and f) is the output after processing and calculating of evaluation with BF by unsing `EvaluateWithBuildingFoorprint` module.
 
-## 🔧 Installation Instructions
+## Installation Instructions
 
-### 1. ✅ Prerequisites
+### 1. Prerequisites
 
 Before installing `fimeval`, ensure the following software are installed:
 
@@ -162,28 +164,24 @@ If Anaconda is not installed, download and install it from the [official website
 
 ---
 
-### 3. 🌐 Set Up Virtual Environment
+### 3. Set Up Virtual Environment
 
-#### 💻 For Mac Users
+#### For Mac Users
 
 Open **Terminal** and run:
 ```bash
-
 # Create a new environment named 'fimeval'
 conda create --name fimeval python=3.10
 
 # Activate the environment
 conda activate fimeval
 
-# Install Jupyter Notebook
-pip install notebook
-
 # Install fimeval package
-pip install fimeval
-
+pip install uv
+uv pip install fimeval
 ```
 
-### ☁️ Google Colab Version
+### Google Colab Version
 
 To use fimeval in Google Colab, follow the steps below:
 
@@ -196,7 +194,6 @@ In a new Colab notebook, mount the  Google Drive
 ```bash
 pip install fimeval
 ```
-
 ### **Acknowledgements**
 | | |
 | --- | --- |
