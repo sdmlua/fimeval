@@ -21,11 +21,13 @@ from .metrics import evaluationmetrics
 from .PWBs3 import get_PWB
 from ..utilis import MakeFIMsUniform
 
-#giving the permission to the folder
+
+# giving the permission to the folder
 def is_writable(path):
     """Check if the directory and its contents are writable."""
     path = Path(path)
     return os.access(path, os.W_OK)
+
 
 def fix_permissions(path):
     path = Path(path).resolve()
@@ -35,11 +37,15 @@ def fix_permissions(path):
         raise FileNotFoundError(f"Shell script not found: {script_path}")
 
     if is_writable(path):
-        return 
+        return
 
     try:
-        result = subprocess.run(["bash", str(script_path), str(path)],
-                                check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            ["bash", str(script_path), str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         print(result.stdout)
     except subprocess.CalledProcessError as e:
         print(f"Shell script failed:\n{e.stderr}")
@@ -79,7 +85,7 @@ def evaluateFIM(
     # Get the smallest matched raster extent and make a boundary shapefile
     smallest_raster_path = get_smallest_raster_path(benchmark_path, *candidate_paths)
 
-    #If method is AOI, and direct shapefile directory is not provided, then it will search for the shapefile in the folder
+    # If method is AOI, and direct shapefile directory is not provided, then it will search for the shapefile in the folder
     if method.__name__ == "AOI":
         # If shapefile is not provided, search in the folder
         if shapefile is None:
@@ -358,7 +364,8 @@ def evaluateFIM(
     print(f"Evaluation metrics saved to {csv_file}")
     return results
 
-#Safely deleting the folder
+
+# Safely deleting the folder
 def safe_delete_folder(folder_path):
     fix_permissions(folder_path)
     try:
@@ -370,19 +377,28 @@ def safe_delete_folder(folder_path):
     except Exception as e:
         print(f"Error deleting {folder_path}: {e}")
 
-def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=None, target_crs=None, target_resolution=None):
+
+def EvaluateFIM(
+    main_dir,
+    method_name,
+    output_dir,
+    PWB_dir=None,
+    shapefile_dir=None,
+    target_crs=None,
+    target_resolution=None,
+):
     main_dir = Path(main_dir)
     # Read the permanent water bodies
     if PWB_dir is None:
         gdf = get_PWB()
     else:
         gdf = gpd.read_file(PWB_dir)
-    
-    #Grant the permission to the main directory
+
+    # Grant the permission to the main directory
     print(f"Fixing permissions for {main_dir}...")
     fix_permissions(main_dir)
 
-    #runt the process
+    # runt the process
     def process_TIFF(tif_files, folder_dir):
         benchmark_path = None
         candidate_path = []
@@ -422,7 +438,9 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
     # Check if main_dir directly contains tif files
     TIFFfiles_main_dir = list(main_dir.glob("*.tif"))
     if TIFFfiles_main_dir:
-        MakeFIMsUniform(main_dir, target_crs=target_crs, target_resolution=target_resolution)
+        MakeFIMsUniform(
+            main_dir, target_crs=target_crs, target_resolution=target_resolution
+        )
 
         # processing folder
         processing_folder = main_dir / "processing"
@@ -434,15 +452,20 @@ def EvaluateFIM(main_dir, method_name, output_dir, PWB_dir=None, shapefile_dir=N
         for folder in main_dir.iterdir():
             if folder.is_dir():
                 tif_files = list(folder.glob("*.tif"))
-                
+
                 if tif_files:
-                    MakeFIMsUniform(folder, target_crs=target_crs, target_resolution=target_resolution)
-                    
+                    MakeFIMsUniform(
+                        folder,
+                        target_crs=target_crs,
+                        target_resolution=target_resolution,
+                    )
+
                     processing_folder = folder / "processing"
                     TIFFfiles = list(processing_folder.glob("*.tif"))
 
                     process_TIFF(TIFFfiles, folder)
                     safe_delete_folder(processing_folder)
                 else:
-                    print(f"Skipping {folder.name} as it doesn't contain any tif files.")
-
+                    print(
+                        f"Skipping {folder.name} as it doesn't contain any tif files."
+                    )

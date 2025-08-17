@@ -65,7 +65,7 @@ def getContingencyMap(raster_path, method_path):
         2: "False positive",
         3: "False negative",
         4: "True positive",
-        5: "Permanent water bodies"
+        5: "Permanent water bodies",
     }
     legend_patches = [
         Patch(
