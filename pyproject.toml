@@ -4,7 +4,7 @@ version = "0.1.53"
 description = "A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+license = { file = "LICENSE.txt" }
 
 authors = [
   { name = "Surface Dynamics Modeling Lab" },
