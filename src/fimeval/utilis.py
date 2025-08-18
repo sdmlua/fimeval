@@ -6,24 +6,27 @@ from pathlib import Path
 import geopandas as gpd
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 
-#Lossless compression to reduce the file size
+
+# Lossless compression to reduce the file size
 def compress_tif_lzw(tif_path):
     # Read original file
     with rasterio.open(tif_path) as src:
         profile = src.profile.copy()
         data = src.read()
-    profile.update(compress='lzw')
+    profile.update(compress="lzw")
 
-    with rasterio.open(tif_path, 'w', **profile) as dst:
+    with rasterio.open(tif_path, "w", **profile) as dst:
         dst.write(data)
 
-#Check whether it is a projected CRS
+
+# Check whether it is a projected CRS
 def is_projected_crs(crs):
     return crs and crs.is_projected
 
-#Check if the FIM bounds are within the CONUS
+
+# Check if the FIM bounds are within the CONUS
 def is_within_conus(bounds, crs=None):
-    CONUS_BBOX = (-125, 24, -66.5, 49.5) 
+    CONUS_BBOX = (-125, 24, -66.5, 49.5)
     left, bottom, right, top = bounds
 
     if crs and crs.is_projected:
@@ -38,7 +41,8 @@ def is_within_conus(bounds, crs=None):
         and top <= CONUS_BBOX[3]
     )
 
-#Reproject the FIMs to EPSG:5070 if withinUS and user doesnot define any target CRS, else user need to define it
+
+# Reproject the FIMs to EPSG:5070 if withinUS and user doesnot define any target CRS, else user need to define it
 def reprojectFIMs(src_path, dst_path, target_crs):
     with rasterio.open(src_path) as src:
         if src.crs != target_crs:
@@ -46,14 +50,16 @@ def reprojectFIMs(src_path, dst_path, target_crs):
                 src.crs, target_crs, src.width, src.height, *src.bounds
             )
             kwargs = src.meta.copy()
-            kwargs.update({
-                'crs': target_crs,
-                'transform': transform,
-                'width': width,
-                'height': height
-            })
+            kwargs.update(
+                {
+                    "crs": target_crs,
+                    "transform": transform,
+                    "width": width,
+                    "height": height,
+                }
+            )
 
-            with rasterio.open(dst_path, 'w', **kwargs) as dst:
+            with rasterio.open(dst_path, "w", **kwargs) as dst:
                 for i in range(1, src.count + 1):
                     reproject(
                         source=rasterio.band(src, i),
@@ -62,14 +68,15 @@ def reprojectFIMs(src_path, dst_path, target_crs):
                         src_crs=src.crs,
                         dst_transform=transform,
                         dst_crs=target_crs,
-                        resampling=Resampling.nearest
+                        resampling=Resampling.nearest,
                     )
         else:
             print(f"Source raster is already in {target_crs}. No reprojection needed.")
             shutil.copy(src_path, dst_path)
         compress_tif_lzw(dst_path)
 
-#Resample into the coarser resoution amoung all FIMS within the case
+
+# Resample into the coarser resoution amoung all FIMS within the case
 def resample_to_resolution(src_path, x_resolution, y_resolution):
     src_path = Path(src_path)
     print(src_path)
@@ -78,20 +85,15 @@ def resample_to_resolution(src_path, x_resolution, y_resolution):
 
     with rasterio.open(src_path) as src:
         transform = rasterio.transform.from_origin(
-            src.bounds.left, src.bounds.top,
-            x_resolution, y_resolution
+            src.bounds.left, src.bounds.top, x_resolution, y_resolution
         )
         width = int((src.bounds.right - src.bounds.left) / x_resolution)
         height = int((src.bounds.top - src.bounds.bottom) / y_resolution)
         kwargs = src.meta.copy()
-        kwargs.update({
-            'transform': transform,
-            'width': width,
-            'height': height
-        })
+        kwargs.update({"transform": transform, "width": width, "height": height})
 
         # Write to temporary file
-        with rasterio.open(temp_path, 'w', **kwargs) as dst:
+        with rasterio.open(temp_path, "w", **kwargs) as dst:
             for i in range(1, src.count + 1):
                 reproject(
                     source=rasterio.band(src, i),
@@ -100,22 +102,23 @@ def resample_to_resolution(src_path, x_resolution, y_resolution):
                     src_crs=src.crs,
                     dst_transform=transform,
                     dst_crs=src.crs,
-                    resampling=Resampling.nearest
+                    resampling=Resampling.nearest,
                 )
 
-    os.remove(src_path)        # delete original
-    os.rename(temp_path, src_path)  
+    os.remove(src_path)  # delete original
+    os.rename(temp_path, src_path)
 
-#Check if the FIMs are in the same CRS or not else do further operation
+
+# Check if the FIMs are in the same CRS or not else do further operation
 def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
     fim_dir = Path(fim_dir)
-    tif_files = list(fim_dir.glob('*.tif'))
+    tif_files = list(fim_dir.glob("*.tif"))
     if not tif_files:
         print(f"No TIFF files found in {fim_dir}")
         return
 
     # Create processing folder to save standardized files
-    processing_folder = fim_dir / 'processing'
+    processing_folder = fim_dir / "processing"
     processing_folder.mkdir(exist_ok=True)
 
     # Collect info about each TIFF
@@ -131,7 +134,7 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
             print(f"Error opening {tif_path}: {e}")
             return
 
-    #CRS Check & Reproject if needed
+    # CRS Check & Reproject if needed
     all_projected = all(projected_flags)
     all_same_crs = len(set(crs_list)) == 1
 
@@ -143,22 +146,26 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
                 final_crs = "EPSG:5070"
                 print(f"Defaulting to CONUS CRS: {final_crs}")
             else:
-                print("Mixed or non-CONUS CRS detected. Please provide a valid target CRS.")
+                print(
+                    "Mixed or non-CONUS CRS detected. Please provide a valid target CRS."
+                )
                 return
-            
+
         print(f"Reprojecting all rasters to {final_crs}")
         for src_path in tif_files:
             dst_path = processing_folder / src_path.name
             reprojectFIMs(str(src_path), str(dst_path), final_crs)
-            compress_tif_lzw(dst_path) 
-            
+            compress_tif_lzw(dst_path)
+
     else:
-        print("All rasters are in the same projected CRS. Copying to processing folder.")
+        print(
+            "All rasters are in the same projected CRS. Copying to processing folder."
+        )
         for src_path in tif_files:
             shutil.copy(src_path, processing_folder / src_path.name)
 
     # Resolution Check & Resample if needed
-    processed_tifs = list(processing_folder.glob('*.tif'))
+    processed_tifs = list(processing_folder.glob("*.tif"))
     final_resolutions = []
     for tif_path in processed_tifs:
         with rasterio.open(tif_path) as src:

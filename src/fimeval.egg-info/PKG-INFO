@@ -1,3 +1,30 @@
+Metadata-Version: 2.4
+Name: fimeval
+Version: 0.1.53
+Summary: A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation
+Author: Surface Dynamics Modeling Lab
+Author-email: Supath Dhital <sdhital@crimson.ua.edu>, Dipshika Devi <ddevi@ua.edu>
+Maintainer-email: Supath Dhital <sdhital@crimson.ua.edu>, Dipshika Devi <ddevi@ua.edu>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Requires-Dist: rasterio<2.0.0,>=1.4.2
+Requires-Dist: numpy>=2
+Requires-Dist: geopandas<2.0.0,>=1.0.1
+Requires-Dist: shapely<3.0.0,>=2.0.6
+Requires-Dist: matplotlib<4.0.0,>=3.9.2
+Requires-Dist: plotly<6.0.0,>=5.24.1
+Requires-Dist: kaleido==0.2.1
+Requires-Dist: nbformat<6.0.0,>=5.10.4
+Requires-Dist: pyproj<4.0.0,>=3.7.0
+Requires-Dist: notebook<8.0.0,>=7.3.2
+Requires-Dist: boto3<2.0.0,>=1.36.16
+Requires-Dist: geemap
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: black; extra == "dev"
+Dynamic: license-file
+
 ## Flood Inundation Mapping Predictions Evaluation Framework (FIMeval)
 <hr style="border: 1px solid black; margin: 0;">  
 

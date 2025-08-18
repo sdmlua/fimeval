@@ -1,5 +1,4 @@
 import os
-import ee
 import glob
 import geopandas as gpd
 import rasterio
@@ -20,6 +19,7 @@ def Changeintogpkg(input_path, output_dir, layer_name):
         output_gpkg = os.path.join(output_dir, f"{layer_name}.gpkg")
         gdf.to_file(output_gpkg, driver="GPKG")
         return output_gpkg
+
 
 def GetFloodedBuildingCountInfo(
     building_fp_path,
@@ -85,7 +85,7 @@ def GetFloodedBuildingCountInfo(
     if "bm" in str(raster1_path).lower():
         count_centroids_in_raster(raster1_path, "Benchmark")
         count_centroids_in_raster(raster2_path, "Candidate")
-        
+
     elif "candidate" in str(raster2_path).lower():
         count_centroids_in_raster(raster1_path, "Candidate")
         count_centroids_in_raster(raster2_path, "Benchmark")
@@ -106,9 +106,10 @@ def GetFloodedBuildingCountInfo(
     CSI = TP / (TP + FP + FN) if (TP + FP + FN) > 0 else 0
     FAR = FP / (TP + FP) if (TP + FP) > 0 else 0
     POD = TP / (TP + FN) if (TP + FN) > 0 else 0
-    
-    
-    BDR = (centroid_counts["Candidate"]- centroid_counts["Benchmark"])/centroid_counts["Benchmark"]
+
+    BDR = (
+        centroid_counts["Candidate"] - centroid_counts["Benchmark"]
+    ) / centroid_counts["Benchmark"]
 
     counts_data = {
         "Category": [
@@ -223,6 +224,7 @@ def GetFloodedBuildingCountInfo(
     print(f"Performance metrics chart is saved as PNG at {output_path}")
     fig.show()
 
+
 def process_TIFF(
     tif_files, contingency_files, building_footprint, boundary, method_path
 ):
@@ -266,22 +268,46 @@ def process_TIFF(
         print("Warning: No benchmark file found.")
     elif not candidate_paths:
         print("Warning: No candidate files found.")
-        
+
+
 def find_existing_footprint(out_dir):
     gpkg_files = list(Path(out_dir).glob("*.gpkg"))
     return gpkg_files[0] if gpkg_files else None
 
-#Incase user defined individual shapefile for each case study
+
+# Incase user defined individual shapefile for each case study
 def detect_shapefile(folder):
-        shapefile = None
-        for ext in (".shp", ".gpkg", ".geojson", ".kml"):
-            for file in os.listdir(folder):
-                if file.lower().endswith(ext):
-                    shapefile = os.path.join(folder, file)
-                    print(f"Auto-detected shapefile: {shapefile}")
-                    return shapefile
-        return None
-    
+    shapefile = None
+    for ext in (".shp", ".gpkg", ".geojson", ".kml"):
+        for file in os.listdir(folder):
+            if file.lower().endswith(ext):
+                shapefile = os.path.join(folder, file)
+                print(f"Auto-detected shapefile: {shapefile}")
+                return shapefile
+    return None
+
+
+def ensure_pyspark(version: str | None = "3.5.4") -> None:
+    """Install pyspark at runtime via `uv pip` into this env (no-op if present)."""
+    import importlib, shutil, subprocess, sys, re
+    try:
+        import importlib.util
+        if importlib.util.find_spec("pyspark"):
+            return
+    except Exception:
+        pass
+    uv = shutil.which("uv")
+    if not uv:
+        raise RuntimeError("`uv` not found on PATH. Please install uv or add it to PATH.")
+    if version is None:
+        spec = "pyspark"
+    else:
+        v = version.strip()
+        spec = f"pyspark{v}" if re.match(r"^[<>=!~]", v) else f"pyspark=={v}"
+    subprocess.check_call([uv, "pip", "install", "--python", sys.executable, spec])
+
+
+
 def EvaluationWithBuildingFootprint(
     main_dir,
     method_name,
@@ -289,6 +315,7 @@ def EvaluationWithBuildingFootprint(
     country=None,
     building_footprint=None,
     shapefile_dir=None,
+    geeprojectID=None,
 ):
     tif_files_main = glob.glob(os.path.join(main_dir, "*.tif"))
     if tif_files_main:
@@ -303,9 +330,7 @@ def EvaluationWithBuildingFootprint(
 
                 if shapefile_dir:
                     boundary = shapefile_dir
-                elif os.path.exists(
-                    os.path.join(method_path, "BoundaryforEvaluation")
-                ):
+                elif os.path.exists(os.path.join(method_path, "BoundaryforEvaluation")):
                     boundary = os.path.join(
                         method_path, "BoundaryforEvaluation", "FIMEvaluatedExtent.shp"
                     )
@@ -313,9 +338,11 @@ def EvaluationWithBuildingFootprint(
                     boundary = detect_shapefile(main_dir)
 
                 building_footprintMS = building_footprint
+                
                 if building_footprintMS is None:
-                    import msfootprint as msf
-
+                    ensure_pyspark()
+                    from .microsoftBF import BuildingFootprintwithISO
+                    
                     out_dir = os.path.join(method_path, "BuildingFootprint")
                     if not os.path.exists(out_dir):
                         os.makedirs(out_dir)
@@ -323,7 +350,15 @@ def EvaluationWithBuildingFootprint(
                     if not EX_building_footprint:
                         boundary_dir = shapefile_dir if shapefile_dir else boundary
 
-                        msf.BuildingFootprintwithISO(country, boundary_dir, out_dir)
+                        if geeprojectID:
+                            BuildingFootprintwithISO(
+                                country,
+                                boundary_dir,
+                                out_dir,
+                                geeprojectID=geeprojectID,
+                            )
+                        else:
+                            BuildingFootprintwithISO(country, boundary_dir, out_dir)
                         building_footprintMS = os.path.join(
                             out_dir, f"building_footprint.gpkg"
                         )
@@ -355,15 +390,19 @@ def EvaluationWithBuildingFootprint(
                             os.path.join(method_path, "BoundaryforEvaluation")
                         ):
                             boundary = os.path.join(
-                                method_path, "BoundaryforEvaluation", "FIMEvaluatedExtent.shp"
+                                method_path,
+                                "BoundaryforEvaluation",
+                                "FIMEvaluatedExtent.shp",
                             )
                         else:
                             boundary = detect_shapefile(os.path.join(main_dir, folder))
 
                         building_footprintMS = building_footprint
+                        
                         if building_footprintMS is None:
-                            import msfootprint as msf
-
+                            ensure_pyspark()
+                            from .microsoftBF import BuildingFootprintwithISO
+                            
                             out_dir = os.path.join(method_path, "BuildingFootprint")
                             if not os.path.exists(out_dir):
                                 os.makedirs(out_dir)
@@ -372,9 +411,17 @@ def EvaluationWithBuildingFootprint(
                                 boundary_dir = (
                                     shapefile_dir if shapefile_dir else boundary
                                 )
-                                msf.BuildingFootprintwithISO(
-                                    country, boundary_dir, out_dir
-                                )
+                                if geeprojectID:
+                                    BuildingFootprintwithISO(
+                                        country,
+                                        boundary_dir,
+                                        out_dir,
+                                        geeprojectID=geeprojectID,
+                                    )
+                                else:
+                                    BuildingFootprintwithISO(
+                                        country, boundary_dir, out_dir
+                                    )
                                 building_footprintMS = os.path.join(
                                     out_dir, f"building_footprint.gpkg"
                                 )
