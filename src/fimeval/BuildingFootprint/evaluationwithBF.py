@@ -20,7 +20,6 @@ def Changeintogpkg(input_path, output_dir, layer_name):
         gdf.to_file(output_gpkg, driver="GPKG")
         return output_gpkg
 
-
 def GetFloodedBuildingCountInfo(
     building_fp_path,
     study_area_path,
@@ -31,7 +30,6 @@ def GetFloodedBuildingCountInfo(
     basename,
 ):
     output_dir = os.path.dirname(building_fp_path)
-
     building_fp_gpkg = Changeintogpkg(
         building_fp_path, output_dir, "building_footprint"
     )
@@ -42,7 +40,6 @@ def GetFloodedBuildingCountInfo(
     with rasterio.open(raster1_path) as src:
         target_crs = str(src.crs)
 
-    # Reproject all GeoDataFrames to the target CRS
     if building_gdf.crs != target_crs:
         building_gdf = building_gdf.to_crs(target_crs)
         print("reproject building_gdf")
@@ -55,43 +52,32 @@ def GetFloodedBuildingCountInfo(
     clipped_buildings["centroid"] = clipped_buildings.geometry.centroid
 
     centroid_counts = {
-        "Benchmark": 0,
-        "Candidate": 0,
         "False Positive": 0,
         "False Negative": 0,
         "True Positive": 0,
     }
 
-    def count_centroids_in_raster(raster_path, label):
+    # Count centroids in the contingency map
+    def count_centroids_in_contingency(raster_path):
         with rasterio.open(raster_path) as src:
             raster_data = src.read(1)
-            transform = src.transform
-
             for centroid in clipped_buildings["centroid"]:
                 row, col = src.index(centroid.x, centroid.y)
                 if 0 <= row < raster_data.shape[0] and 0 <= col < raster_data.shape[1]:
                     pixel_value = raster_data[row, col]
-                    if label in ["Benchmark", "Candidate"]:
-                        if pixel_value == 2:  # False Positive
-                            centroid_counts[label] += 1
-                    else:
-                        if pixel_value == 2:
-                            centroid_counts["False Positive"] += 1
-                        elif pixel_value == 3:
-                            centroid_counts["False Negative"] += 1
-                        elif pixel_value == 4:
-                            centroid_counts["True Positive"] += 1
+                    if pixel_value == 2:
+                        centroid_counts["False Positive"] += 1
+                    elif pixel_value == 3:
+                        centroid_counts["False Negative"] += 1
+                    elif pixel_value == 4:
+                        centroid_counts["True Positive"] += 1
 
-    if "bm" in str(raster1_path).lower():
-        count_centroids_in_raster(raster1_path, "Benchmark")
-        count_centroids_in_raster(raster2_path, "Candidate")
+    count_centroids_in_contingency(contingency_map)
 
-    elif "candidate" in str(raster2_path).lower():
-        count_centroids_in_raster(raster1_path, "Candidate")
-        count_centroids_in_raster(raster2_path, "Benchmark")
+    # Calculate Candidate and Benchmark counts from the contingency map counts
+    centroid_counts["Candidate"] = centroid_counts["True Positive"] + centroid_counts["False Positive"]
+    centroid_counts["Benchmark"] = centroid_counts["True Positive"] + centroid_counts["False Negative"]
 
-    if "contingency" in str(contingency_map).lower():
-        count_centroids_in_raster(contingency_map, "Contingency")
 
     total_buildings = len(clipped_buildings)
     percentages = {
@@ -107,10 +93,14 @@ def GetFloodedBuildingCountInfo(
     FAR = FP / (TP + FP) if (TP + FP) > 0 else 0
     POD = TP / (TP + FN) if (TP + FN) > 0 else 0
 
-    BDR = (
-        centroid_counts["Candidate"] - centroid_counts["Benchmark"]
-    ) / centroid_counts["Benchmark"]
-
+    if centroid_counts["Benchmark"] > 0:
+        BDR = (
+            (centroid_counts["Candidate"] - centroid_counts["Benchmark"])
+            / centroid_counts["Benchmark"]
+        )
+    else:
+            BDR = 0
+        
     counts_data = {
         "Category": [
             "Candidate",
@@ -290,22 +280,25 @@ def detect_shapefile(folder):
 def ensure_pyspark(version: str | None = "3.5.4") -> None:
     """Install pyspark at runtime via `uv pip` into this env (no-op if present)."""
     import importlib, shutil, subprocess, sys, re
+
     try:
         import importlib.util
+
         if importlib.util.find_spec("pyspark"):
             return
     except Exception:
         pass
     uv = shutil.which("uv")
     if not uv:
-        raise RuntimeError("`uv` not found on PATH. Please install uv or add it to PATH.")
+        raise RuntimeError(
+            "`uv` not found on PATH. Please install uv or add it to PATH."
+        )
     if version is None:
         spec = "pyspark"
     else:
         v = version.strip()
         spec = f"pyspark{v}" if re.match(r"^[<>=!~]", v) else f"pyspark=={v}"
     subprocess.check_call([uv, "pip", "install", "--python", sys.executable, spec])
-
 
 
 def EvaluationWithBuildingFootprint(
@@ -338,11 +331,11 @@ def EvaluationWithBuildingFootprint(
                     boundary = detect_shapefile(main_dir)
 
                 building_footprintMS = building_footprint
-                
+
                 if building_footprintMS is None:
                     ensure_pyspark()
                     from .microsoftBF import BuildingFootprintwithISO
-                    
+
                     out_dir = os.path.join(method_path, "BuildingFootprint")
                     if not os.path.exists(out_dir):
                         os.makedirs(out_dir)
@@ -398,11 +391,11 @@ def EvaluationWithBuildingFootprint(
                             boundary = detect_shapefile(os.path.join(main_dir, folder))
 
                         building_footprintMS = building_footprint
-                        
+
                         if building_footprintMS is None:
                             ensure_pyspark()
                             from .microsoftBF import BuildingFootprintwithISO
-                            
+
                             out_dir = os.path.join(method_path, "BuildingFootprint")
                             if not os.path.exists(out_dir):
                                 os.makedirs(out_dir)

@@ -18,6 +18,7 @@ warnings.filterwarnings("ignore")
 # Authenticate and initialize Earth Engine
 ee.Authenticate()
 
+
 # %%
 def split_into_tiles(boundary, tile_size=0.1):
     bounds = boundary.total_bounds

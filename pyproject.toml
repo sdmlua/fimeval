@@ -1,6 +1,6 @@
 [project]
 name = "fimeval"
-version = "0.1.53"
+version = "0.1.54"
 description = "A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,7 +29,8 @@ dependencies = [
   "pyproj>=3.7.0,<4.0.0",
   "notebook>=7.3.2,<8.0.0",
   "boto3>=1.36.16,<2.0.0",
-  "geemap"
+  "geemap",
+  "uv"
 ]
 
 [project.optional-dependencies]

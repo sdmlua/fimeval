@@ -31,24 +31,35 @@ def is_writable(path):
 
 def fix_permissions(path):
     path = Path(path).resolve()
-    script_path = Path(__file__).parent / "fix_permissions.sh"
-
-    if not script_path.exists():
-        raise FileNotFoundError(f"Shell script not found: {script_path}")
 
     if is_writable(path):
         return
 
+    uname = platform.system()
+
     try:
-        result = subprocess.run(
-            ["bash", str(script_path), str(path)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        print(result.stdout)
+        if uname in ["Darwin", "Linux"]:
+            subprocess.run(
+                ["chmod", "-R", "u+rwX", str(path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            print(f"Permissions granted for user (u+rwX): {path}")
+
+        elif "MINGW" in uname or "MSYS" in uname or "CYGWIN" in uname:
+            subprocess.run(
+                ["icacls", str(path), "/grant", "Everyone:F", "/T"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            print(f"Permissions granted for working folder: {path}")
+
+        else:
+            print(f"Unsupported OS: {uname}")
     except subprocess.CalledProcessError as e:
-        print(f"Shell script failed:\n{e.stderr}")
+        print(f"Failed to fix permissions for {path}:\n{e.stderr}")
 
 
 # Function for the evalution of the model

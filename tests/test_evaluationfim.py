@@ -11,7 +11,6 @@ output_dir = (
 target_crs = "EPSG:5070"  # Target CRS for reprojecting the FIMs, need to be in EPSG code of Projected CRS
 target_resolution = 10  # This will be in meters, if it passes the FIMS will be resampled to this resolution else, it will find the coarser resolution among all FIMS for this case and use that to resample!
 
-
 building_footprint = "path/to/building_footprint.shp"  # If user is working with user defined building footprint shapefile
 
 # If user is working with user defined shapefile
@@ -30,7 +29,7 @@ countryISO = "USA"
 def test_evaluation_framework():
     # Run the evaluation
     # It has the Permanent Water Bodies (PWB) dataset as default for United States
-    # fe.EvaluateFIM(Main_dir, method_name, output_dir)
+    fe.EvaluateFIM(Main_dir, method_name, output_dir)
 
     # OR, If the Evaluation Study Area is outside the US or, user has their own PWB dataset
     # fe.EvaluateFIM(Main_dir, method_name, output_dir)
@@ -45,7 +44,9 @@ def test_evaluation_framework():
     # fe.PlotEvaluationMetrics(Main_dir, method_name, output_dir)
 
     # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset)
-    # fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, country=countryISO, geeprojectID="supathdh")
+    fe.EvaluationWithBuildingFootprint(
+        Main_dir, method_name, output_dir, country=countryISO, geeprojectID="supathdh"
+    )
 
     # If user have their own building footprint dataset, they can use it as well
-    fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint=building_footprint)
+    # fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint=building_footprint)
