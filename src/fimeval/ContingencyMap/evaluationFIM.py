@@ -116,7 +116,7 @@ def evaluateFIM(
         bounding_geom = AOI(benchmark_path, shapefile, save_dir)
 
     else:
-        print(f"--- {method.__name__} is processing ---")
+        print(f"**{method.__name__} is processing**")
         bounding_geom = method(smallest_raster_path, save_dir=save_dir)
 
     # Read and process benchmark raster
@@ -406,7 +406,6 @@ def EvaluateFIM(
         gdf = gpd.read_file(PWB_dir)
 
     # Grant the permission to the main directory
-    print(f"Fixing permissions for {main_dir}...")
     fix_permissions(main_dir)
 
     # runt the process
@@ -425,12 +424,11 @@ def EvaluateFIM(
             for tif_file in tif_files:
                 if "benchmark" in tif_file.name.lower() or "BM" in tif_file.name:
                     benchmark_path = tif_file
-                    print(f"---Benchmark: {tif_file.name}---")
                 else:
                     candidate_path.append(tif_file)
 
         if benchmark_path and candidate_path:
-            print(f"---Flood Inundation Evaluation of {folder_dir.name}---")
+            print(f"**Flood Inundation Evaluation of {folder_dir.name}**")
             Metrics = evaluateFIM(
                 benchmark_path,
                 candidate_path,
