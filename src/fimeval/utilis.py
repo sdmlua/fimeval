@@ -71,7 +71,6 @@ def reprojectFIMs(src_path, dst_path, target_crs):
                         resampling=Resampling.nearest,
                     )
         else:
-            print(f"Source raster is already in {target_crs}. No reprojection needed.")
             shutil.copy(src_path, dst_path)
         compress_tif_lzw(dst_path)
 
@@ -79,9 +78,7 @@ def reprojectFIMs(src_path, dst_path, target_crs):
 # Resample into the coarser resoution amoung all FIMS within the case
 def resample_to_resolution(src_path, x_resolution, y_resolution):
     src_path = Path(src_path)
-    print(src_path)
     temp_path = src_path.with_name(src_path.stem + "_resampled.tif")
-    print(temp_path)
 
     with rasterio.open(src_path) as src:
         transform = rasterio.transform.from_origin(
@@ -144,14 +141,13 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
         if not final_crs:
             if all(is_within_conus(b, c) for b, c in zip(bounds_list, crs_list)):
                 final_crs = "EPSG:5070"
-                print(f"Defaulting to CONUS CRS: {final_crs}")
+                print(f"Defaulting to CONUS CRS: {final_crs}, Reprojecting.")
             else:
                 print(
                     "Mixed or non-CONUS CRS detected. Please provide a valid target CRS."
                 )
                 return
 
-        print(f"Reprojecting all rasters to {final_crs}")
         for src_path in tif_files:
             dst_path = processing_folder / src_path.name
             reprojectFIMs(str(src_path), str(dst_path), final_crs)

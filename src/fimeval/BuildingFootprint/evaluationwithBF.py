@@ -6,6 +6,8 @@ import pandas as pd
 from pathlib import Path
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 
 def Changeintogpkg(input_path, output_dir, layer_name):
@@ -19,6 +21,7 @@ def Changeintogpkg(input_path, output_dir, layer_name):
         output_gpkg = os.path.join(output_dir, f"{layer_name}.gpkg")
         gdf.to_file(output_gpkg, driver="GPKG")
         return output_gpkg
+
 
 def GetFloodedBuildingCountInfo(
     building_fp_path,
@@ -57,7 +60,6 @@ def GetFloodedBuildingCountInfo(
         "True Positive": 0,
     }
 
-    # Count centroids in the contingency map
     def count_centroids_in_contingency(raster_path):
         with rasterio.open(raster_path) as src:
             raster_data = src.read(1)
@@ -74,10 +76,12 @@ def GetFloodedBuildingCountInfo(
 
     count_centroids_in_contingency(contingency_map)
 
-    # Calculate Candidate and Benchmark counts from the contingency map counts
-    centroid_counts["Candidate"] = centroid_counts["True Positive"] + centroid_counts["False Positive"]
-    centroid_counts["Benchmark"] = centroid_counts["True Positive"] + centroid_counts["False Negative"]
-
+    centroid_counts["Candidate"] = (
+        centroid_counts["True Positive"] + centroid_counts["False Positive"]
+    )
+    centroid_counts["Benchmark"] = (
+        centroid_counts["True Positive"] + centroid_counts["False Negative"]
+    )
 
     total_buildings = len(clipped_buildings)
     percentages = {
@@ -92,15 +96,13 @@ def GetFloodedBuildingCountInfo(
     CSI = TP / (TP + FP + FN) if (TP + FP + FN) > 0 else 0
     FAR = FP / (TP + FP) if (TP + FP) > 0 else 0
     POD = TP / (TP + FN) if (TP + FN) > 0 else 0
-
     if centroid_counts["Benchmark"] > 0:
         BDR = (
-            (centroid_counts["Candidate"] - centroid_counts["Benchmark"])
-            / centroid_counts["Benchmark"]
-        )
+            centroid_counts["Candidate"] - centroid_counts["Benchmark"]
+        ) / centroid_counts["Benchmark"]
     else:
-            BDR = 0
-        
+        BDR = 0
+
     counts_data = {
         "Category": [
             "Candidate",
@@ -125,13 +127,14 @@ def GetFloodedBuildingCountInfo(
             f"{BDR:.3f}",
         ],
     }
-
     counts_df = pd.DataFrame(counts_data)
     csv_file_path = os.path.join(
         save_dir, "EvaluationMetrics", f"BuildingCounts_{basename}.csv"
     )
+    os.makedirs(os.path.dirname(csv_file_path), exist_ok=True)
     counts_df.to_csv(csv_file_path, index=False)
 
+    # Plotly interactive visualization only
     third_raster_labels = ["False Positive", "False Negative", "True Positive"]
     third_raster_counts = [
         centroid_counts["False Positive"],
@@ -162,7 +165,6 @@ def GetFloodedBuildingCountInfo(
         row=1,
         col=1,
     )
-
     fig.add_trace(
         go.Bar(
             x=["Benchmark"],
@@ -178,17 +180,17 @@ def GetFloodedBuildingCountInfo(
         col=1,
     )
 
-    for i in range(len(third_raster_labels)):
+    for i, label in enumerate(third_raster_labels):
         fig.add_trace(
             go.Bar(
-                x=[third_raster_labels[i]],
+                x=[label],
                 y=[third_raster_counts[i]],
                 text=[f"{third_raster_counts[i]}"],
                 textposition="auto",
                 marker_color=["#ff5733", "#ffc300", "#28a745"][i],
                 marker_line_color="black",
                 marker_line_width=1,
-                name=f"{third_raster_labels[i]} ({percentages[third_raster_labels[i]]:.2f}%)",
+                name=f"{label} ({percentages[label]:.2f}%)",
             ),
             row=1,
             col=2,
@@ -200,19 +202,85 @@ def GetFloodedBuildingCountInfo(
         yaxis_title="Flooded Building Counts",
         width=1100,
         height=400,
-        plot_bgcolor="rgba(0, 0, 0, 0)",
-        paper_bgcolor="rgba(0, 0, 0, 0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         showlegend=True,
         font=dict(family="Arial", size=18, color="black"),
     )
+    fig.show()
+
+    # Seaborn for static PNG saving only
+    df_left = pd.DataFrame(
+        {
+            "Category": ["Candidate", "Benchmark"],
+            "Count": [centroid_counts["Candidate"], centroid_counts["Benchmark"]],
+        }
+    )
+    df_right = pd.DataFrame(
+        {
+            "Category": third_raster_labels,
+            "Count": third_raster_counts,
+        }
+    )
+
+    sns.set_theme(style="whitegrid")
+    fig_sb, axes = plt.subplots(1, 2, figsize=(8, 3), constrained_layout=True)
+
+    def style_axes(ax, title_text, xlab, show_ylabel: bool):
+        # Adding a bit of padding so bar labels don’t overlap with the title
+        ax.set_title(title_text, fontsize=16, pad=20)
+        ax.set_xlabel(xlab, fontsize=14, color="black")
+        if show_ylabel:
+            ax.set_ylabel("Flooded Building Counts", fontsize=14, color="black")
+        else:
+            ax.set_ylabel("")
+
+        # Thicker black left/bottom spines
+        for spine in ("left", "bottom"):
+            ax.spines[spine].set_linewidth(1.5)
+            ax.spines[spine].set_color("black")
+
+        sns.despine(ax=ax, right=True, top=True)
+        ax.tick_params(axis="x", labelsize=12, colors="black")
+        ax.tick_params(axis="y", labelsize=12, colors="black")
+
+    # Left panel
+    ax0 = axes[0]
+    sns.barplot(
+        data=df_left, x="Category", y="Count", ax=ax0, palette=["#1c83eb", "#a4490e"]
+    )
+    style_axes(
+        ax0, "Building Counts on Different FIMs", "Inundation Surface", show_ylabel=True
+    )
+    for c in ax0.containers:
+        ax0.bar_label(
+            c, fmt="%.0f", label_type="edge", padding=3, fontsize=14, color="black"
+        )
+
+    # Right panel
+    ax1 = axes[1]
+    sns.barplot(
+        data=df_right,
+        x="Category",
+        y="Count",
+        ax=ax1,
+        palette=["#ff5733", "#ffc300", "#28a745"],
+    )
+    style_axes(
+        ax1, "Contingency Flooded Building Counts", "Category", show_ylabel=False
+    )
+    for c in ax1.containers:
+        ax1.bar_label(
+            c, fmt="%.0f", label_type="edge", padding=3, fontsize=14, color="black"
+        )
 
     plot_dir = os.path.join(save_dir, "FinalPlots")
-    if not os.path.exists(plot_dir):
-        os.makedirs(plot_dir)
+    os.makedirs(plot_dir, exist_ok=True)
     output_path = os.path.join(plot_dir, f"BuildingCounts_{basename}.png")
-    fig.write_image(output_path, scale=500 / 96, engine="kaleido")
-    print(f"Performance metrics chart is saved as PNG at {output_path}")
-    fig.show()
+    fig_sb.savefig(output_path, dpi=400)
+    plt.close(fig_sb)
+
+    print(f"PNG were saved in : {output_path}")
 
 
 def process_TIFF(

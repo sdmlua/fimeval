@@ -3,10 +3,12 @@ from pathlib import Path
 
 Main_dir = (
     # "../docs/sampledata"
+    "/Users/supath/Downloads/MSResearch/FIMpef/fimpef/docs/sampledata"
 )
 PWD_dir = "./path/to/PWB"
 output_dir = (
     # "./path/to/output"  # This is the output directory where the results will be saved
+    "/Users/supath/Downloads/MSResearch/FIMpef/fimpef/docs/output"
 )
 target_crs = "EPSG:5070"  # Target CRS for reprojecting the FIMs, need to be in EPSG code of Projected CRS
 target_resolution = 10  # This will be in meters, if it passes the FIMS will be resampled to this resolution else, it will find the coarser resolution among all FIMS for this case and use that to resample!
@@ -38,10 +40,10 @@ def test_evaluation_framework():
     # fe.EvaluateFIM(Main_dir, method_name, output_dir, target_crs=target_crs, shapefile_dir = AOI, target_resolution=target_resolution)
 
     # # Once the FIM evaluation is done, print the contingency map
-    # fe.PrintContingencyMap(Main_dir, method_name, output_dir)
+    fe.PrintContingencyMap(Main_dir, method_name, output_dir)
 
     # # Plot the evaluation metrics after the FIM evaluation
-    # fe.PlotEvaluationMetrics(Main_dir, method_name, output_dir)
+    fe.PlotEvaluationMetrics(Main_dir, method_name, output_dir)
 
     # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset)
     fe.EvaluationWithBuildingFootprint(
