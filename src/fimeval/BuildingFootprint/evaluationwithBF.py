@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import seaborn as sns
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
 def Changeintogpkg(input_path, output_dir, layer_name):
@@ -209,7 +210,7 @@ def GetFloodedBuildingCountInfo(
     )
     fig.show()
 
-    # Seaborn for static PNG saving only
+    # Seaborn for static PNG
     df_left = pd.DataFrame(
         {
             "Category": ["Candidate", "Benchmark"],
@@ -224,56 +225,65 @@ def GetFloodedBuildingCountInfo(
     )
 
     sns.set_theme(style="whitegrid")
-    fig_sb, axes = plt.subplots(1, 2, figsize=(8, 3), constrained_layout=True)
+
+    fig_sb = plt.figure(figsize=(10, 3), constrained_layout=True)
+    gs = gridspec.GridSpec(1, 3, figure=fig_sb, width_ratios=[1, 1, 0.4])
+
+    ax0 = fig_sb.add_subplot(gs[0, 0])
+    ax1 = fig_sb.add_subplot(gs[0, 1])
+    ax_leg = fig_sb.add_subplot(gs[0, 2])
+    ax_leg.axis("off")
 
     def style_axes(ax, title_text, xlab, show_ylabel: bool):
-        # Adding a bit of padding so bar labels don’t overlap with the title
-        ax.set_title(title_text, fontsize=16, pad=20)
-        ax.set_xlabel(xlab, fontsize=14, color="black")
+        ax.set_title(title_text, fontsize=14, pad=15)
+        ax.set_xlabel(xlab, fontsize=13, color="black")
         if show_ylabel:
-            ax.set_ylabel("Flooded Building Counts", fontsize=14, color="black")
+            ax.set_ylabel("Flooded Building Counts", fontsize=13, color="black")
         else:
             ax.set_ylabel("")
 
-        # Thicker black left/bottom spines
         for spine in ("left", "bottom"):
             ax.spines[spine].set_linewidth(1.5)
             ax.spines[spine].set_color("black")
 
         sns.despine(ax=ax, right=True, top=True)
-        ax.tick_params(axis="x", labelsize=12, colors="black")
-        ax.tick_params(axis="y", labelsize=12, colors="black")
+        ax.tick_params(axis="x", labelsize=11, colors="black")
+        ax.tick_params(axis="y", labelsize=11, colors="black")
 
     # Left panel
-    ax0 = axes[0]
-    sns.barplot(
-        data=df_left, x="Category", y="Count", ax=ax0, palette=["#1c83eb", "#a4490e"]
-    )
-    style_axes(
-        ax0, "Building Counts on Different FIMs", "Inundation Surface", show_ylabel=True
-    )
+    colors_left = ["#1c83eb", "#a4490e"]
+    sns.barplot(data=df_left, x="Category", y="Count", ax=ax0, palette=colors_left)
+    style_axes(ax0, "Building Counts on Different FIMs", "Inundation Surface", True)
     for c in ax0.containers:
         ax0.bar_label(
-            c, fmt="%.0f", label_type="edge", padding=3, fontsize=14, color="black"
+            c, fmt="%.0f", label_type="edge", padding=3, fontsize=12, color="black"
         )
 
     # Right panel
-    ax1 = axes[1]
-    sns.barplot(
-        data=df_right,
-        x="Category",
-        y="Count",
-        ax=ax1,
-        palette=["#ff5733", "#ffc300", "#28a745"],
-    )
-    style_axes(
-        ax1, "Contingency Flooded Building Counts", "Category", show_ylabel=False
-    )
+    colors_right = ["#ff5733", "#ffc300", "#28a745"]
+    sns.barplot(data=df_right, x="Category", y="Count", ax=ax1, palette=colors_right)
+    style_axes(ax1, "Contingency Flooded Building Counts", "Category", False)
     for c in ax1.containers:
         ax1.bar_label(
-            c, fmt="%.0f", label_type="edge", padding=3, fontsize=14, color="black"
+            c, fmt="%.0f", label_type="edge", padding=3, fontsize=12, color="black"
         )
 
+    # Combined legend
+    all_labels = ["Candidate", "Benchmark"] + third_raster_labels
+    all_colors = colors_left + colors_right
+    legend_handles = [
+        plt.Line2D(
+            [0],
+            [0],
+            marker="s",
+            color="w",
+            markerfacecolor=all_colors[i],
+            markersize=12,
+            label=f"{all_labels[i]} ({percentages[all_labels[i]]:.2f}%)",
+        )
+        for i in range(len(all_labels))
+    ]
+    ax_leg.legend(handles=legend_handles, fontsize=12, loc="center left", frameon=True)
     plot_dir = os.path.join(save_dir, "FinalPlots")
     os.makedirs(plot_dir, exist_ok=True)
     output_path = os.path.join(plot_dir, f"BuildingCounts_{basename}.png")
