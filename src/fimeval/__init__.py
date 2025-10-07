@@ -10,6 +10,8 @@ from .utilis import compress_tif_lzw
 # Evaluation with Building foorprint module
 from .BuildingFootprint.evaluationwithBF import EvaluationWithBuildingFootprint
 
+#FIM evaluation
+from .FIMs.owphandfim import get_HANDFIM
 __all__ = [
     "EvaluateFIM",
     "PrintContingencyMap",
@@ -17,4 +19,5 @@ __all__ = [
     "get_PWB",
     "EvaluationWithBuildingFootprint",
     "compress_tif_lzw",
+    "get_HANDFIM",
 ]

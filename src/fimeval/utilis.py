@@ -6,7 +6,6 @@ from pathlib import Path
 import geopandas as gpd
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 
-
 # Lossless compression to reduce the file size
 def compress_tif_lzw(tif_path):
     # Read original file
