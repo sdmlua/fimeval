@@ -1,6 +1,7 @@
 import os
 import rasterio
 
+
 # INITIALIZE IN HUC EVENT DICT
 def initialize_huc_event(huc_id, event_times):
     if isinstance(event_times, str):

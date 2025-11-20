@@ -7,6 +7,7 @@ import fimserve as fm
 
 from .utilis import *
 
+
 # GET LOW FIDELITY USING FIMSERVE
 def get_HANDFIM(
     huc_id,
@@ -58,6 +59,7 @@ def get_HANDFIM(
 
     finally:
         os.chdir(original_cwd)
+
 
 # Raster to binary
 def raster2binary(input_raster_path, geometry, final_raster_path):
