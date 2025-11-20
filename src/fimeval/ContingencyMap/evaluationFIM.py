@@ -277,8 +277,8 @@ def evaluateFIM(
                                 out_transform1,
                             )
                             merged = out_image1 + out_image2_resized
-                            merged[merged==7] = 5 
-                            
+                            merged[merged == 7] = 5
+
             # Get Evaluation Metrics
             (
                 unique_values,

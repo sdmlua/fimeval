@@ -28,9 +28,8 @@ dependencies = [
   "nbformat>=5.10.4,<6.0.0",
   "pyproj>=3.7.0,<4.0.0",
   "notebook>=7.3.2,<8.0.0",
-  "boto3>=1.36.16,<2.0.0",
+  "boto3>=1.40.0",
   "geemap",
-  "uv",
   "seaborn"
 ]
 
