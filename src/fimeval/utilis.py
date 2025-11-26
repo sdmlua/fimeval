@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import pyproj
 import rasterio
@@ -182,3 +183,51 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
             resample_to_resolution(str(src_path), coarsest_x, coarsest_y)
     else:
         print("All rasters already have the same resolution. No resampling needed.")
+
+#Function to find the best boundary file in the folder if multiple boundary files are present
+def find_best_boundary(folder: Path, benchmark_path: Path):  
+    """
+    Choose the best boundary file in `folder`:
+    - prefer .gpkg (from benchFIM downloads),
+    - otherwise, pick the file with the most name tokens in common with the benchmark.
+    """
+    exts = [".gpkg", ".shp", ".geojson", ".kml"]
+    candidates = []
+    for ext in exts:
+        candidates.extend(folder.glob(f"*{ext}"))
+
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        print(f"Auto-detected boundary: {candidates[0]}")
+        return candidates[0]
+
+    bench_tokens = set(
+        t for t in re.split(r"[_\-\.\s]+", benchmark_path.stem.lower()) if t
+    )
+
+    def score(path: Path):
+        name_tokens = set(
+            t for t in re.split(r"[_\-\.\s]+", path.stem.lower()) if t
+        )
+        common = len(bench_tokens & name_tokens)
+        bonus = 1 if path.suffix.lower() == ".gpkg" else 0 
+        return (common, bonus)
+
+    best = max(candidates, key=score)
+    print(f"Auto-detected boundary (best match to benchmark): {best}")
+    return best
+
+
+#To test whether the tif is benchmark or not
+def benchmark_name(f: Path) -> bool:
+    name = f.stem.lower()
+
+    # Explicit word
+    if "benchmark" in name:
+        return True
+
+    # Treating underscores/dashes/dots as separators and look for a 'bm' token
+    tokens = re.split(r"[_\-\.\s]+", name)
+    return "bm" in tokens
+

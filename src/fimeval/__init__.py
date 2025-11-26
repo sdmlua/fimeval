@@ -10,8 +10,8 @@ from .utilis import compress_tif_lzw
 # Evaluation with Building foorprint module
 from .BuildingFootprint.evaluationwithBF import EvaluationWithBuildingFootprint
 
-# FIM evaluation
-from .FIMs.owphandfim import get_HANDFIM
+#Access benchmark FIM module
+from .BenchFIMQuery.access_benchfim import benchFIMquery
 
 __all__ = [
     "EvaluateFIM",
@@ -20,5 +20,5 @@ __all__ = [
     "get_PWB",
     "EvaluationWithBuildingFootprint",
     "compress_tif_lzw",
-    "get_HANDFIM",
+    "benchFIMquery",
 ]
