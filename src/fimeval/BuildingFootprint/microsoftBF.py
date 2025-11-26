@@ -130,3 +130,5 @@ def BuildingFootprintwithISO(countryISO, ROI, out_dir, geeprojectID=None):
     getBuildingFootprintSpark(
         countryISO, ROI, out_dir, tile_size=0.05, projectID=geeprojectID
     )
+
+BuildingFootprintwithISO("USA", "/Users/supath/Downloads/AOI/AOI.shp", "/Users/supath/Downloads/AOI", geeprojectID="supathdh")

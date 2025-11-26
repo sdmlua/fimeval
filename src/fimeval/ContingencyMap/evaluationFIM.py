@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 from pathlib import Path
 import geopandas as gpd
@@ -12,6 +13,8 @@ from rasterio.io import MemoryFile
 from rasterio import features
 from rasterio.mask import mask
 
+os.environ["CHECK_DISK_FREE_SPACE"] = "NO"
+
 import warnings
 
 warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
@@ -19,7 +22,8 @@ warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
 from .methods import AOI, smallest_extent, convex_hull, get_smallest_raster_path
 from .metrics import evaluationmetrics
 from .PWBs3 import get_PWB
-from ..utilis import MakeFIMsUniform
+from ..utilis import MakeFIMsUniform, benchmark_name, find_best_boundary
+from ..setup_benchFIM import ensure_benchmark
 
 
 # giving the permission to the folder
@@ -98,20 +102,18 @@ def evaluateFIM(
 
     # If method is AOI, and direct shapefile directory is not provided, then it will search for the shapefile in the folder
     if method.__name__ == "AOI":
-        # If shapefile is not provided, search in the folder
+        # Ubest-matching boundary file, prefer .gpkg from benchFIM downloads
         if shapefile is None:
-            for ext in (".shp", ".gpkg", ".geojson", ".kml"):
-                for file in os.listdir(folder):
-                    if file.lower().endswith(ext):
-                        shapefile = os.path.join(folder, file)
-                        print(f"Auto-detected shapefile: {shapefile}")
-                        break
-                if shapefile:
-                    break
-            if shapefile is None:
+            shapefile_path = find_best_boundary(Path(folder), Path(benchmark_path))
+            if shapefile_path is None:
                 raise FileNotFoundError(
-                    "No shapefile (.shp, .gpkg, .geojson, .kml) found in the folder and none provided. Either provide a shapefile directory or put shapefile inside folder directory."
+                    f"No boundary file (.gpkg, .shp, .geojson, .kml) found in {folder}. "
+                    "Either provide a shapefile path or place a boundary file in the folder."
                 )
+            shapefile = str(shapefile_path)
+        else:
+            shapefile = str(shapefile)
+
         # Run AOI with the found or provided shapefile
         bounding_geom = AOI(benchmark_path, shapefile, save_dir)
 
@@ -392,13 +394,17 @@ def safe_delete_folder(folder_path):
 
 def EvaluateFIM(
     main_dir,
-    method_name,
-    output_dir,
+    method_name=None,  
+    output_dir=None,    
     PWB_dir=None,
     shapefile_dir=None,
     target_crs=None,
     target_resolution=None,
+    benchmark_dict=None,
 ):
+    if output_dir is None: 
+        output_dir = os.path.join(os.getcwd(), "Evaluation_Results")
+
     main_dir = Path(main_dir)
     # Read the permanent water bodies
     if PWB_dir is None:
@@ -414,32 +420,46 @@ def EvaluateFIM(
         benchmark_path = None
         candidate_path = []
 
-        if len(tif_files) == 2:
-            for tif_file in tif_files:
-                if "benchmark" in tif_file.name.lower() or "BM" in tif_file.name:
-                    benchmark_path = tif_file
-                else:
-                    candidate_path.append(tif_file)
-
-        elif len(tif_files) > 2:
-            for tif_file in tif_files:
-                if "benchmark" in tif_file.name.lower() or "BM" in tif_file.name:
-                    benchmark_path = tif_file
-                else:
-                    candidate_path.append(tif_file)
+        for tif_file in tif_files:
+            if benchmark_name(tif_file):
+                benchmark_path = tif_file
+            else:
+                candidate_path.append(tif_file)
 
         if benchmark_path and candidate_path:
+            if method_name is None:
+                local_method = "AOI"
+                
+                #For single case, if user have explicitly send boundary, use that, else use the boundary from the benchmark FIM evaluation
+                if shapefile_dir is not None:
+                    local_shapefile = shapefile_dir
+                else:
+                    boundary = find_best_boundary(folder_dir, benchmark_path)
+                    if boundary is None:
+                        print(
+                            f"Skipping {folder_dir.name}: no boundary file found "
+                            f"and method_name is None (auto-AOI)."
+                        )
+                        return
+                    local_shapefile = str(boundary)
+            else:
+                local_method = method_name
+                local_shapefile = shapefile_dir 
+
             print(f"**Flood Inundation Evaluation of {folder_dir.name}**")
-            Metrics = evaluateFIM(
-                benchmark_path,
-                candidate_path,
-                gdf,
-                folder_dir,
-                method_name,
-                output_dir,
-                shapefile_dir,
-            )
-            print("\n", Metrics, "\n")
+            try:
+                Metrics = evaluateFIM(
+                    benchmark_path,
+                    candidate_path,
+                    gdf,
+                    folder_dir,
+                    local_method,
+                    output_dir,
+                    shapefile=local_shapefile,  
+                )
+                print("\n", Metrics, "\n")
+            except Exception as e:
+                print(f"Error evaluating {folder_dir.name}: {e}")
         else:
             print(
                 f"Skipping {folder_dir.name} as it doesn't have a valid benchmark and candidate configuration."
@@ -448,34 +468,54 @@ def EvaluateFIM(
     # Check if main_dir directly contains tif files
     TIFFfiles_main_dir = list(main_dir.glob("*.tif"))
     if TIFFfiles_main_dir:
-        MakeFIMsUniform(
-            main_dir, target_crs=target_crs, target_resolution=target_resolution
+
+        # Ensure benchmark is present if needed
+        TIFFfiles_main_dir = ensure_benchmark( 
+            main_dir, TIFFfiles_main_dir, benchmark_dict
         )
 
-        # processing folder
         processing_folder = main_dir / "processing"
-        TIFFfiles = list(processing_folder.glob("*.tif"))
+        try:
+            MakeFIMsUniform(
+                main_dir, target_crs=target_crs, target_resolution=target_resolution
+            )
 
-        process_TIFF(TIFFfiles, main_dir)
-        safe_delete_folder(processing_folder)
+            # processing folder
+            TIFFfiles = list(processing_folder.glob("*.tif"))
+
+            process_TIFF(TIFFfiles, main_dir)
+        except Exception as e:
+            print(f"Error processing {main_dir}: {e}")
+        finally:
+            safe_delete_folder(processing_folder)
     else:
         for folder in main_dir.iterdir():
             if folder.is_dir():
                 tif_files = list(folder.glob("*.tif"))
 
                 if tif_files:
-                    MakeFIMsUniform(
-                        folder,
-                        target_crs=target_crs,
-                        target_resolution=target_resolution,
-                    )
+                    processing_folder = folder / "processing"  
+                    try:
+                        # Ensure benchmark is present if needed
+                        tif_files = ensure_benchmark(  
+                            folder, tif_files, benchmark_dict
+                        )
 
-                    processing_folder = folder / "processing"
-                    TIFFfiles = list(processing_folder.glob("*.tif"))
+                        MakeFIMsUniform(
+                            folder,
+                            target_crs=target_crs,
+                            target_resolution=target_resolution,
+                        )
 
-                    process_TIFF(TIFFfiles, folder)
-                    safe_delete_folder(processing_folder)
+                        TIFFfiles = list(processing_folder.glob("*.tif"))
+
+                        process_TIFF(TIFFfiles, folder)
+                    except Exception as e:
+                        print(f"Error processing folder {folder.name}: {e}")
+                    finally:
+                        safe_delete_folder(processing_folder)
                 else:
                     print(
                         f"Skipping {folder.name} as it doesn't contain any tif files."
                     )
+
