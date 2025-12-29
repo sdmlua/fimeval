@@ -131,4 +131,4 @@ def BuildingFootprintwithISO(countryISO, ROI, out_dir, geeprojectID=None):
         countryISO, ROI, out_dir, tile_size=0.05, projectID=geeprojectID
     )
 
-BuildingFootprintwithISO("USA", "/Users/supath/Downloads/AOI/AOI.shp", "/Users/supath/Downloads/AOI", geeprojectID="supathdh")
+BuildingFootprintwithISO("USA", "/Users/supath/Downloads/S1A_9_6m_20190530T23573_910244W430506N_AOI.gpkg", "/Users/supath/Downloads/AOI", geeprojectID="supathdh")

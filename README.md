@@ -21,7 +21,7 @@ To address these issues, we developed Flood Inundation Mapping Prediction Evalua
 
 
 
-### **Repository structure**
+### Repository structure
 <hr style="border: 1px solid black; margin: 0;">  
 
 The architecture of the ```fimeval``` integrates different modules to which helps the automation of flood evaluation. All those modules codes are in source (```src``` ) folder.
@@ -53,7 +53,7 @@ The graphical representation of fimeval pipeline can be summarized as follows in
 </div>
 Figure 1: Flowchart showing the entire framework pipeline.
 
-### **Framework Installation and Usage**
+### Framework Installation and Usage
 <hr style="border: 1px solid black; margin: 0;">  
 
 This framework is published as a python package in PyPI (https://pypi.org/project/fimeval/).For directly using the package, the user can install this package using python package installer 'pip' and can import on their workflows:
@@ -74,7 +74,9 @@ import fimeval as fp
 ```
 **Note: The framework usage provided in detailed in [Here (docs/fimeval_usage.ipynb)](./docs/fimeval_usage.ipynb)**. It has detail documentation from installation, setup, running- until results.
 
-#### **Main Directory Structure**
+### Main Directory Structure
+<hr style="border: 1px solid black; margin: 0;">  
+
 The main directory contains the primary folder for storing the  case studies. If there is one case study, user can directly pass the case study folder as the main directory. Each case study folder must include a Benchmark FIM (B-FIM)  with a 'benchmark' word  assigned within the B-FIM file and different Model Predicted FIM (M-FIM)
 in tif format. 
 For mutilple case studies,the main directory could be structure in such a way that contain the seperate folders for individual case studies.For example, if a user has two case studies they should create two seperate folders as shown in the Figure below.
@@ -95,7 +97,7 @@ If user have more precise PWB, they can input their own PWB boundary as .shp and
 ```bash
 PWD_dir = Path('./path/to/PWB/vector/file')
 ```
-#### **Methods for Extracting Flood Extents**
+#### Methods for Extracting Flood Extents
 1. **```smallest_extent```**  
    The framework will first check all the raster extents (benchmark and FIMs). It will then determine the smallest among all the rasters. A shape file will then be created to mask all the rasters.
 
@@ -125,7 +127,7 @@ method_name = "AOI"
 AOI  = Path('./path/to/AOI/vectorfile')
 ```
 
-#### **Executing the Evaluation framework**
+#### Executing the Evaluation framework
 The complete description of different modules, what they are meant for, arguments taken to run that module and what will be the end results from each is described in below **Table 1**. If user import `fimeval` framework as `fp` into workflows, they can call each module mentioned in **Table 1** as `fp.Module_Name(args)`. Here arguments in italic represents the optional field, depending upon the user requirement.
 
 Table 1: Modules in `fimeval` are in order of execution.
@@ -143,8 +145,9 @@ Table 1: Modules in `fimeval` are in order of execution.
 Figure 4: Combined raw output from framework for different two method. First row (subplot a and b) and second row (subplot c and d) is contingency maps and evaluation metrics of FIM derived using `PrintContingencyMaP` and `PlotEvaluationMetrics` module. Third row (subplot e and f) is the output after processing and calculating of evaluation with BF by unsing `EvaluateWithBuildingFoorprint` module.
 
 ## Installation Instructions
+<hr style="border: 1px solid black; margin: 0;">  
 
-### 1. Prerequisites
+#### 1. Prerequisites
 
 Before installing `fimeval`, ensure the following software are installed:
 
@@ -158,13 +161,13 @@ Before installing `fimeval`, ensure the following software are installed:
 
 ---
 
-### 2. Install Anaconda
+#### 2. Install Anaconda
 
 If Anaconda is not installed, download and install it from the [official website](https://www.anaconda.com/products/distribution).
 
 ---
 
-### 3. Set Up Virtual Environment
+#### 3. Set Up Virtual Environment
 
 #### For Mac Users
 
@@ -182,24 +185,40 @@ uv pip install fimeval
 ```
 
 ### Google Colab Version
+<hr style="border: 1px solid black; margin: 0;">  
 
 To use fimeval in Google Colab, follow the steps below:
 
-## Upload Files
+#### Upload Files
 Upload all necessary input files (e.g., raster, shapefiles, model outputs) to your Google Drive.
-## Open Google Colab
+#### Open Google Colab
 Go to Google Colab and sign in with a valid Google account.
-## Mount Google Drive
+#### Mount Google Drive
 In a new Colab notebook, mount the  Google Drive
 ```bash
 pip install fimeval
 ```
-### **Acknowledgements**
+### Citing our work
+<hr style="border: 1px solid black; margin: 0;">  
+
+- Devi, D., Dipsikha, Supath Dhital, Dinuke Munasinghe, Sagy Cohen, Anupal Baruah, Yixian Chen, Dan Tian, & Carson Pruitt (2025).  
+  *A framework for the evaluation of flood inundation predictions over extensive benchmark databases.*  
+  **Environmental Modelling & Software**, 106786.  
+  https://doi.org/10.1016/j.envsoft.2025.106786
+
+- Cohen, S., Baruah, A., Nikrou, P., Tian, D., & Liu, H. (2025). 
+  *Toward robust evaluations of flood inundation predictions using remote sensing–derived benchmark maps.*  
+  **Water Resources Research**, 61(8).  
+  https://doi.org/10.1029/2024WR039574
+
+### Acknowledgements
+<hr style="border: 1px solid black; margin: 0;">  
+
 | | |
 | --- | --- |
 | ![alt text](https://ciroh.ua.edu/wp-content/uploads/2022/08/CIROHLogo_200x200.png) | Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama.
 
-### **For More Information**
+### For More Information
 Contact <a href="https://geography.ua.edu/people/sagy-cohen/" target="_blank">Sagy Cohen</a>
  (sagy.cohen@ua.edu)
  Dipsikha Devi, (ddevi@ua.edu)
