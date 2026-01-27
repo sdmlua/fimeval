@@ -1,3 +1,7 @@
+"""
+Author: Supath Dhital
+Date Updated: January 2026
+"""
 import os
 import re
 import numpy as np
@@ -394,15 +398,15 @@ def safe_delete_folder(folder_path):
 
 def EvaluateFIM(
     main_dir,
-    method_name=None,  
-    output_dir=None,    
+    method_name=None,
+    output_dir=None,
     PWB_dir=None,
     shapefile_dir=None,
     target_crs=None,
     target_resolution=None,
     benchmark_dict=None,
 ):
-    if output_dir is None: 
+    if output_dir is None:
         output_dir = os.path.join(os.getcwd(), "Evaluation_Results")
 
     main_dir = Path(main_dir)
@@ -429,8 +433,8 @@ def EvaluateFIM(
         if benchmark_path and candidate_path:
             if method_name is None:
                 local_method = "AOI"
-                
-                #For single case, if user have explicitly send boundary, use that, else use the boundary from the benchmark FIM evaluation
+
+                # For single case, if user have explicitly send boundary, use that, else use the boundary from the benchmark FIM evaluation
                 if shapefile_dir is not None:
                     local_shapefile = shapefile_dir
                 else:
@@ -444,7 +448,7 @@ def EvaluateFIM(
                     local_shapefile = str(boundary)
             else:
                 local_method = method_name
-                local_shapefile = shapefile_dir 
+                local_shapefile = shapefile_dir
 
             print(f"**Flood Inundation Evaluation of {folder_dir.name}**")
             try:
@@ -455,9 +459,18 @@ def EvaluateFIM(
                     folder_dir,
                     local_method,
                     output_dir,
-                    shapefile=local_shapefile,  
+                    shapefile=local_shapefile,
                 )
-                print("\n", Metrics, "\n")
+                
+                # Print results in structured table format with 3 decimal points
+                candidate_names = [os.path.splitext(os.path.basename(path))[0] for path in candidate_path]
+                df_display = pd.DataFrame.from_dict(Metrics, orient='index')
+                df_display.columns = candidate_names
+                df_display.reset_index(inplace=True)
+                df_display.rename(columns={'index': 'Metrics'}, inplace=True)
+                print("\n")
+                print(df_display.to_string(index=False, float_format='%.3f'))
+                print("\n")
             except Exception as e:
                 print(f"Error evaluating {folder_dir.name}: {e}")
         else:
@@ -470,7 +483,7 @@ def EvaluateFIM(
     if TIFFfiles_main_dir:
 
         # Ensure benchmark is present if needed
-        TIFFfiles_main_dir = ensure_benchmark( 
+        TIFFfiles_main_dir = ensure_benchmark(
             main_dir, TIFFfiles_main_dir, benchmark_dict
         )
 
@@ -494,12 +507,10 @@ def EvaluateFIM(
                 tif_files = list(folder.glob("*.tif"))
 
                 if tif_files:
-                    processing_folder = folder / "processing"  
+                    processing_folder = folder / "processing"
                     try:
                         # Ensure benchmark is present if needed
-                        tif_files = ensure_benchmark(  
-                            folder, tif_files, benchmark_dict
-                        )
+                        tif_files = ensure_benchmark(folder, tif_files, benchmark_dict)
 
                         MakeFIMsUniform(
                             folder,
@@ -518,4 +529,3 @@ def EvaluateFIM(
                     print(
                         f"Skipping {folder.name} as it doesn't contain any tif files."
                     )
-

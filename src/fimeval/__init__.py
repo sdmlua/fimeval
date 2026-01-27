@@ -10,8 +10,11 @@ from .utilis import compress_tif_lzw
 # Evaluation with Building foorprint module
 from .BuildingFootprint.evaluationwithBF import EvaluationWithBuildingFootprint
 
-#Access benchmark FIM module
+# Access benchmark FIM module
 from .BenchFIMQuery.access_benchfim import benchFIMquery
+
+# Building Footprint module
+from .BuildingFootprint.arcgis_API import getBuildingFootprint
 
 __all__ = [
     "EvaluateFIM",
@@ -21,4 +24,5 @@ __all__ = [
     "EvaluationWithBuildingFootprint",
     "compress_tif_lzw",
     "benchFIMquery",
+    "getBuildingFootprint",
 ]

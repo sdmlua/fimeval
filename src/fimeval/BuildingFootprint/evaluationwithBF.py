@@ -10,6 +10,9 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
+# Import building footprint module
+from .arcgis_API import getBuildingFootprint
+
 
 def Changeintogpkg(input_path, output_dir, layer_name):
     input_path = str(input_path)
@@ -355,38 +358,12 @@ def detect_shapefile(folder):
     return None
 
 
-def ensure_pyspark(version: str | None = "3.5.4") -> None:
-    """Install pyspark at runtime via `uv pip` into this env (no-op if present)."""
-    import importlib, shutil, subprocess, sys, re
-
-    try:
-        import importlib.util
-
-        if importlib.util.find_spec("pyspark"):
-            return
-    except Exception:
-        pass
-    uv = shutil.which("uv")
-    if not uv:
-        raise RuntimeError(
-            "`uv` not found on PATH. Please install uv or add it to PATH."
-        )
-    if version is None:
-        spec = "pyspark"
-    else:
-        v = version.strip()
-        spec = f"pyspark{v}" if re.match(r"^[<>=!~]", v) else f"pyspark=={v}"
-    subprocess.check_call([uv, "pip", "install", "--python", sys.executable, spec])
-
-
 def EvaluationWithBuildingFootprint(
     main_dir,
     method_name,
     output_dir,
-    country=None,
     building_footprint=None,
     shapefile_dir=None,
-    geeprojectID=None,
 ):
     tif_files_main = glob.glob(os.path.join(main_dir, "*.tif"))
     if tif_files_main:
@@ -410,31 +387,23 @@ def EvaluationWithBuildingFootprint(
 
                 building_footprintMS = building_footprint
 
+                # If no building footprint provided, extract using ArcGIS API
                 if building_footprintMS is None:
-                    ensure_pyspark()
-                    from .microsoftBF import BuildingFootprintwithISO
-
                     out_dir = os.path.join(method_path, "BuildingFootprint")
                     if not os.path.exists(out_dir):
                         os.makedirs(out_dir)
                     EX_building_footprint = find_existing_footprint(out_dir)
-                    if not EX_building_footprint:
-                        boundary_dir = shapefile_dir if shapefile_dir else boundary
-
-                        if geeprojectID:
-                            BuildingFootprintwithISO(
-                                country,
-                                boundary_dir,
-                                out_dir,
-                                geeprojectID=geeprojectID,
-                            )
-                        else:
-                            BuildingFootprintwithISO(country, boundary_dir, out_dir)
-                        building_footprintMS = os.path.join(
-                            out_dir, f"building_footprint.gpkg"
-                        )
-                    else:
+                    if EX_building_footprint:
                         building_footprintMS = EX_building_footprint
+                    else:
+                        boundary_dir = shapefile_dir if shapefile_dir else boundary
+                        getBuildingFootprint(
+                            boundary=boundary_dir,
+                            output_dir=out_dir,
+                        )
+                        # After downloading, find the newly created footprint
+                        building_footprintMS = find_existing_footprint(out_dir)
+
                 process_TIFF(
                     tif_files,
                     contingency_files,
@@ -471,33 +440,22 @@ def EvaluationWithBuildingFootprint(
                         building_footprintMS = building_footprint
 
                         if building_footprintMS is None:
-                            ensure_pyspark()
-                            from .microsoftBF import BuildingFootprintwithISO
-
                             out_dir = os.path.join(method_path, "BuildingFootprint")
                             if not os.path.exists(out_dir):
                                 os.makedirs(out_dir)
                             EX_building_footprint = find_existing_footprint(out_dir)
-                            if not EX_building_footprint:
+                            if EX_building_footprint:
+                                building_footprintMS = EX_building_footprint
+                            else:
                                 boundary_dir = (
                                     shapefile_dir if shapefile_dir else boundary
                                 )
-                                if geeprojectID:
-                                    BuildingFootprintwithISO(
-                                        country,
-                                        boundary_dir,
-                                        out_dir,
-                                        geeprojectID=geeprojectID,
-                                    )
-                                else:
-                                    BuildingFootprintwithISO(
-                                        country, boundary_dir, out_dir
-                                    )
-                                building_footprintMS = os.path.join(
-                                    out_dir, f"building_footprint.gpkg"
+                                getBuildingFootprint(
+                                    boundary=boundary_dir,
+                                    output_dir=out_dir,
                                 )
-                            else:
-                                building_footprintMS = EX_building_footprint
+                                # After downloading, find the newly created footprint
+                                building_footprintMS = find_existing_footprint(out_dir)
 
                         process_TIFF(
                             tif_files,
