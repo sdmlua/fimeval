@@ -15,6 +15,7 @@ import pandas as pd
 from rasterio.warp import reproject, Resampling
 from rasterio.io import MemoryFile
 from rasterio import features
+from shapely.geometry import shape
 from rasterio.mask import mask
 
 os.environ["CHECK_DISK_FREE_SPACE"] = "NO"
@@ -23,9 +24,9 @@ import warnings
 
 warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
 
-from .methods import AOI, smallest_extent, convex_hull, get_smallest_raster_path
+from .methods import AOI, convex_hull, smallest_extent, get_smallest_raster_path
 from .metrics import evaluationmetrics
-from .PWBs3 import get_PWB
+from .water_bodies import ExtractPWB
 from ..utilis import MakeFIMsUniform, benchmark_name, find_best_boundary
 from ..setup_benchFIM import ensure_benchmark
 
@@ -72,7 +73,7 @@ def fix_permissions(path):
 
 # Function for the evalution of the model
 def evaluateFIM(
-    benchmark_path, candidate_paths, gdf, folder, method, output_dir, shapefile=None
+    benchmark_path, candidate_paths, PWB_Dir, folder, method, output_dir, shapefile=None
 ):
     # Lists to store evaluation metrics
     csi_values = []
@@ -133,8 +134,23 @@ def evaluateFIM(
         benchmark_nodata = src1.nodata
         benchmark_crs = src1.crs
         b_profile = src1.profile
+
+        #Getting the correct geometry shape and crs to extract PWB
+        boundary_shape = shape(bounding_geom[0])
+        boundary_gdf = gpd.GeoDataFrame(geometry=[boundary_shape], crs=benchmark_crs)
+
+        #Proceed the masking
         out_image1[out_image1 == benchmark_nodata] = 0
         out_image1 = np.where(out_image1 > 0, 2, 0).astype(np.float32)
+
+        #If PWB_Dir is provided, use the local PWB shapefile, else download from ArcGIS API
+        if PWB_Dir is not None:
+            gdf = gpd.read_file(PWB_Dir)
+        else:
+            #Get the permanent water bodies from ArcGIS REST API
+            pwb_obj = ExtractPWB(boundary = boundary_gdf, save = False)
+            gdf = pwb_obj.gdf
+
         gdf = gdf.to_crs(benchmark_crs)
         shapes1 = [
             geom for geom in gdf.geometry if geom is not None and not geom.is_empty
@@ -410,11 +426,6 @@ def EvaluateFIM(
         output_dir = os.path.join(os.getcwd(), "Evaluation_Results")
 
     main_dir = Path(main_dir)
-    # Read the permanent water bodies
-    if PWB_dir is None:
-        gdf = get_PWB()
-    else:
-        gdf = gpd.read_file(PWB_dir)
 
     # Grant the permission to the main directory
     fix_permissions(main_dir)
@@ -455,7 +466,7 @@ def EvaluateFIM(
                 Metrics = evaluateFIM(
                     benchmark_path,
                     candidate_path,
-                    gdf,
+                    PWB_dir,
                     folder_dir,
                     local_method,
                     output_dir,

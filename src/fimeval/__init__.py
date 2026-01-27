@@ -2,7 +2,7 @@
 from .ContingencyMap.evaluationFIM import EvaluateFIM
 from .ContingencyMap.printcontingency import PrintContingencyMap
 from .ContingencyMap.plotevaluationmetrics import PlotEvaluationMetrics
-from .ContingencyMap.PWBs3 import get_PWB
+from .ContingencyMap.water_bodies import get_PWB, ExtractPWB
 
 # Utility modules
 from .utilis import compress_tif_lzw
@@ -25,4 +25,5 @@ __all__ = [
     "compress_tif_lzw",
     "benchFIMquery",
     "getBuildingFootprint",
+    "ExtractPWB",
 ]

@@ -14,13 +14,13 @@ target_resolution = 10  # This will be in meters, if it passes the FIMS will be 
 building_footprint = "path/to/building_footprint.shp"  # If user is working with user defined building footprint shapefile
 
 # If user is working with user defined shapefile
-AOI = "path/to/shapefile.shp"  # This shapefile should be in projected CRS, if not, it will be reprojected to the target CRS
+AOI = "path/to/your/boundary"  # This shapefile should be in projected CRS, if not, it will be reprojected to the target CRS
 
 # Three methods are available to evaluate the FIM,
 # 1. Smallest extent
 # 2. Convex Hull
 # 3. AOI (User defined shapefile)
-method_name = "smallest_extent"
+method_name = "AOI"
 
 # 3 letter country ISO code
 countryISO = "USA"
@@ -39,13 +39,13 @@ benchmark_dict = {"HUC11110203_AR": "AI_0_4m_20160103_923809W350109N_BM.tif"}
 def test_evaluation_framework():
     # Run the evaluation [Few possible cases documentations are given below]
     # It has the Permanent Water Bodies (PWB) dataset as default for United States
-    fe.EvaluateFIM(Main_dir, method_name, output_dir)
+    # fe.EvaluateFIM(Main_dir, method_name, output_dir)
 
     # OR, If the Evaluation Study Area is outside the US or, user has their own PWB dataset
     # fe.EvaluateFIM(Main_dir, method_name, output_dir)
 
     # If the FIMS are not in projected crs or are in different spatial resolution
-    # fe.EvaluateFIM(Main_dir, method_name, output_dir, target_crs=target_crs, shapefile_dir = AOI, target_resolution=target_resolution)
+    fe.EvaluateFIM(Main_dir, method_name, output_dir, target_crs=target_crs, shapefile_dir = AOI, target_resolution=target_resolution)
 
     """
     If user is passing with specified benchmark FIMs used from the benchmark FIM catalog as a dictionary.
@@ -63,7 +63,7 @@ def test_evaluation_framework():
 
     # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset retrieved using ArcGIS REST API)
     # It will use the evaluation boundary to retrieve the building footprints
-    fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir)
+    fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, shapefile_dir=AOI)
 
     # If user have their own building footprint dataset, they can use it as well
     # fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint=building_footprint)
