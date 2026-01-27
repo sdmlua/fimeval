@@ -196,13 +196,16 @@ def format_records_for_print(
             date_str = _pretty_date_for_print(r)
             lines.append(f"Benchmark FIM date: {date_str}")
 
-        lines.extend([
-            f"Spatial Resolution: {res_txt}",
-            f"Benchmark FIM raster name in DB: {fname}",
-        ])
+        lines.extend(
+            [
+                f"Spatial Resolution: {res_txt}",
+                f"Benchmark FIM raster name in DB: {fname}",
+            ]
+        )
         blocks.append("\n".join(lines))
 
     return (header + "\n\n".join(blocks)).strip()
+
 
 # S3 and json catalog
 def load_catalog_core() -> Dict[str, Any]:
@@ -224,6 +227,7 @@ def _download(bucket: str, key: str, dest_path: str) -> str:
     _S3.download_file(bucket, key, dest_path)
     return dest_path
 
+
 # Get the files from s3 bucket
 def _folder_from_record(rec: Dict[str, Any]) -> str:
     s3_key = rec.get("s3_key")
@@ -241,7 +245,8 @@ def _tif_key_from_record(rec: Dict[str, Any]) -> Optional[str]:
         return None
     return _folder_from_record(rec) + fname
 
-#Download that tif and the boundary file --> need to add building footprint automation as well.
+
+# Download that tif and the boundary file --> need to add building footprint automation as well.
 def download_fim_assets(record: Dict[str, Any], dest_dir: str) -> Dict[str, Any]:
     """
     Download the .tif (if present) and any .gpkg from the record's folder to dest_dir.

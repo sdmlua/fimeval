@@ -184,8 +184,9 @@ def MakeFIMsUniform(fim_dir, target_crs=None, target_resolution=None):
     else:
         print("All rasters already have the same resolution. No resampling needed.")
 
-#Function to find the best boundary file in the folder if multiple boundary files are present
-def find_best_boundary(folder: Path, benchmark_path: Path):  
+
+# Function to find the best boundary file in the folder if multiple boundary files are present
+def find_best_boundary(folder: Path, benchmark_path: Path):
     """
     Choose the best boundary file in `folder`:
     - prefer .gpkg (from benchFIM downloads),
@@ -207,11 +208,9 @@ def find_best_boundary(folder: Path, benchmark_path: Path):
     )
 
     def score(path: Path):
-        name_tokens = set(
-            t for t in re.split(r"[_\-\.\s]+", path.stem.lower()) if t
-        )
+        name_tokens = set(t for t in re.split(r"[_\-\.\s]+", path.stem.lower()) if t)
         common = len(bench_tokens & name_tokens)
-        bonus = 1 if path.suffix.lower() == ".gpkg" else 0 
+        bonus = 1 if path.suffix.lower() == ".gpkg" else 0
         return (common, bonus)
 
     best = max(candidates, key=score)
@@ -219,7 +218,7 @@ def find_best_boundary(folder: Path, benchmark_path: Path):
     return best
 
 
-#To test whether the tif is benchmark or not
+# To test whether the tif is benchmark or not
 def benchmark_name(f: Path) -> bool:
     name = f.stem.lower()
 
@@ -230,4 +229,3 @@ def benchmark_name(f: Path) -> bool:
     # Treating underscores/dashes/dots as separators and look for a 'bm' token
     tokens = re.split(r"[_\-\.\s]+", name)
     return "bm" in tokens
-

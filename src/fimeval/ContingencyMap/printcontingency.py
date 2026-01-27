@@ -101,7 +101,9 @@ def getContingencyMap(raster_path, method_path):
     base_name = os.path.basename(raster_path).split(".")[0]
     output_path = os.path.join(plot_dir, f"{base_name}.png")
     plt.savefig(output_path, dpi=500, bbox_inches="tight")
-    plt.show()
+    plt.show(block=False) 
+    plt.pause(5.0)  
+    plt.close()
 
 
 def PrintContingencyMap(main_dir, method_name, out_dir):

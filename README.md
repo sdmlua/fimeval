@@ -30,11 +30,15 @@ fimeval/
 ├── docs/                       # Documentation (contains 'FIMserv' Tool usage sample codes)
 │   └── sampledata/              # Contains the sample data to demonstrate how this frameworks works    
 │   └── fimeval_usage.ipynb            #Sample code usage of the Evaluation framework
+│   └── fimbench_usage.ipynb           #Sample code usage of the FIMbench Query and getting benchmark dataset
 ├── Images/                       # have sample images for documentation       
 ├── src/
-│   └── fimeval/         
+│   └── fimeval/    
+│       ├──BenchFIMQuery/   #Module to interact with the extensive FIMdatabase, hosted in AWS S3
+│       │   └── access_benchfim.py   #Different classes to query right benchmark FIM for any given location and set of filter
+│       │   └── utilis.py   #Support utility      
 │       ├──BuildingFootprint/ # Contains the evaluation of model predicted FIM with microsoft building footprint
-│       │   └── microsoftBF.py 
+│       │   └── arcgis_API.py   #seamless integration of building footprint in evaluation through ArcGIS REST API
 │       │   └── evaluationwithBF.py       
 │       └── ContingencyMap/      # Contains all the metrics calculation and contingency map generation
 │       │   ├── evaluationFIM.py # main evaluation moodule 
@@ -42,14 +46,14 @@ fimeval/
 │       │   └── metrics.py  # metrics calculation module
 │       │   └── plotevaluationmetrics.py  # use to vizualize the different performance metrics
 │       │   └── printcontingency.py  # prints the contingency map to quickly generate the Map layout
-│       │   └── PWBs3.py  # module which helps to get permanent water bodies from s3 bucket
+│       │   └── water_bodies.py  # module which to get permanent water bodies from s3 bucket and ArcGIS REST API
 │       └── utilis.py   #Includes the resampling and reprojection of FIMs
 └── tests/                  # Includes test cases for different functionality
 ```
 The graphical representation of fimeval pipeline can be summarized as follows in **```Figure 1```**. Here, it will show all the steps incorporated within the ```fimeval``` during packaging and all functionality are interconnected to each other, resulting the automation of the framework.
 
 <div align="center">
-  <img width="900" alt="image" src="./Images/flowchart.jpg">
+  <img width="800" alt="image" src="./Images/flowchart.jpg">
 </div>
 Figure 1: Flowchart showing the entire framework pipeline.
 
@@ -91,7 +95,7 @@ main_dir = Path('./path/to/main/dir')
 ```
 
 #### **Permanent Water Bodies (PWB)**
-This framework uses PWB to first to delineate the PWB in the FIM and assign into different class so that the evaluation will be more fair. For the Contiguous United States (CONUS), the PWB is already integrated within the framework however, if user have more accurate PWB or using fimeval for outside US they can initialize and use PWB within fimeval framework. Currently it is using PWB publicly hosted by ESRI: https://hub.arcgis.com/datasets/esri::usa-detailed-water-bodies/about
+This framework uses PWB to first to delineate the PWB in the FIM and assign into different class so that the evaluation will be more fair. For the Contiguous United States (CONUS), the PWB is already integrated within the framework however, if user have more accurate PWB or using fimeval for outside US they can initialize and use PWB within fimeval framework. Currently it is using PWB publicly hosted by ESRI through REST API: https://hub.arcgis.com/datasets/esri::usa-detailed-water-bodies/about
 
 If user have more precise PWB, they can input their own PWB boundary as .shp and .gpkg format and need to assign the shapefile of the PWB and define directory as,
 ```bash
@@ -136,7 +140,7 @@ Table 1: Modules in `fimeval` are in order of execution.
 | `EvaluateFIM` | It runs all the evaluation of FIM between B-FIM and M-FIMs. | `main_dir`: Main directory containing the case study folders, <br> `method_name`: How users wants to evaluate their FIM, <br> `outpur_dir`: Output directory where all the results and the intermidiate files will be saved for further calculation, <br>  *`PWB_dir`*: The permanenet water bodies vectory file directory if user wants to user their own boundary, <br> *`target_crs`*: this fimeval framework needs the floodmaps to be in projected CRS so define the projected CRS in epsg code format, <br> *`target_resolution`*: sometime if the benchmark is very high resolution than candidate FIMs, it needs heavy computational time, so user can define the resolution if there FIMs are in different spatial resolution, else it will use the coarser resolution among all FIMS within that case. |The outputs includes generated files in TIFF, SHP, CSV, and PNG formats, all stored within the output folder. Users can visualize the TIFF files using any geospatial platform. The TIFF files consist of the binary Benchmark-FIM (Benchmark.tif), Model-FIM (Candidate.tif), and Agreement-FIM (Contingency.tif). The shp files contain the boundary of the generated flood extent.|
 | `PlotContingencyMap` | For better understanding, It will print the agreement maps derived in first step. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding contingency raster for printing.| This prints the contingency map showing different class of evaluation (TP, FP, no data, PWB etc). The outputs look like- Figure 4 first row.|
 | `PlotEvaluationMetrics` | For quick understanding of the evaluation metrics, to plot bar of evaluation scores. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding file for printing based on all those info.| This prints the bar plots which includes different performance metrics calculated by EvaluateFIM module. The outputs look like- Figure 4 second row.|
-| `EvaluationWithBuildingFootprint` | For Building Footprint Analysis, user can specify shapefile of building footprints as .shp or .gpkg format. By default it consider global Microsoft building footprint dataset. Those data are hosted in Google Earth Engine (GEE) so, It pops up to authenticate the GEE account, please allow it and it will download the data based on evaluation boundary and evaluation is done. | `main_dir`, `method_name`, `output_dir`: Those arguments are as it is, same as all other modules. <br> *`building_footprint`*: If user wants to use their own building footprint file then pass the directory here, *`country`*: It is the 3 letter based country ISO code (eg. 'USA', NEP' etc), for the building data automation using GEE based on the evaluation extent, *`shapefile_dir`*: this is the directory of user defined AOI if user is working with their own boundary and automatic Building footprint download and evaluation, *`geeprojectID`*: this is the google earth engine google cloud project ID, which helps to access the GEE data and resources to work with building footprint download and process. | It will calculate the different metrics (e.g. TP, FP, CSI, F1, Accuracy etc) based on hit and miss of building on different M-FIM and B-FIM. Those all metrics will be saved as CSV format in `output_dir` and finally using that info it prints the counts of building foorpint in each FIMs as well as scenario on the evaluation end via bar plot.|
+| `EvaluationWithBuildingFootprint` | For Building Footprint Analysis, user can specify shapefile of building footprints as .shp or .gpkg format. By default it consider global Microsoft building footprint dataset hosted in ArcGIS Online. It is seamlessly integrated within framework through ArcGIS REST API. | `main_dir`, `method_name`, `output_dir`: Those arguments are as it is, same as all other modules. <br> *`building_footprint`*: If user wants to use their own building footprint file then pass the directory here, *`shapefile_dir`*: this is the directory of user defined AOI if user is working with their own boundary and automatic Building footprint download and evaluation,| It will calculate the different metrics (e.g. TP, FP, CSI, F1, Accuracy etc) based on hit and miss of building on different M-FIM and B-FIM. Those all metrics will be saved as CSV format in `output_dir` and finally using that info it prints the counts of building foorpint in each FIMs as well as scenario on the evaluation end via bar plot.|
 
 <p align="center">
   <img src="./Images/methodsresults_combined.jpg" width="750" />
@@ -219,7 +223,9 @@ pip install fimeval
 | ![alt text](https://ciroh.ua.edu/wp-content/uploads/2022/08/CIROHLogo_200x200.png) | Funding for this project was provided by the National Oceanic & Atmospheric Administration (NOAA), awarded to the Cooperative Institute for Research to Operations in Hydrology (CIROH) through the NOAA Cooperative Agreement with The University of Alabama.
 
 ### For More Information
+
 Contact <a href="https://geography.ua.edu/people/sagy-cohen/" target="_blank">Sagy Cohen</a>
  (sagy.cohen@ua.edu)
+ Supath Dhital, (sdhital@crimson.ua.edu)
  Dipsikha Devi, (ddevi@ua.edu)
-Supath Dhital, (sdhital@crimson.ua.edu)
+

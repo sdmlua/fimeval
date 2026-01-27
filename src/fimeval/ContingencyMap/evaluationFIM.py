@@ -1,3 +1,7 @@
+"""
+Author: Supath Dhital
+Date Updated: January 2026
+"""
 import os
 import re
 import numpy as np
@@ -11,6 +15,7 @@ import pandas as pd
 from rasterio.warp import reproject, Resampling
 from rasterio.io import MemoryFile
 from rasterio import features
+from shapely.geometry import shape
 from rasterio.mask import mask
 
 os.environ["CHECK_DISK_FREE_SPACE"] = "NO"
@@ -19,9 +24,9 @@ import warnings
 
 warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
 
-from .methods import AOI, smallest_extent, convex_hull, get_smallest_raster_path
+from .methods import AOI, convex_hull, smallest_extent, get_smallest_raster_path
 from .metrics import evaluationmetrics
-from .PWBs3 import get_PWB
+from .water_bodies import ExtractPWB
 from ..utilis import MakeFIMsUniform, benchmark_name, find_best_boundary
 from ..setup_benchFIM import ensure_benchmark
 
@@ -68,7 +73,7 @@ def fix_permissions(path):
 
 # Function for the evalution of the model
 def evaluateFIM(
-    benchmark_path, candidate_paths, gdf, folder, method, output_dir, shapefile=None
+    benchmark_path, candidate_paths, PWB_Dir, folder, method, output_dir, shapefile=None
 ):
     # Lists to store evaluation metrics
     csi_values = []
@@ -129,8 +134,23 @@ def evaluateFIM(
         benchmark_nodata = src1.nodata
         benchmark_crs = src1.crs
         b_profile = src1.profile
+
+        #Getting the correct geometry shape and crs to extract PWB
+        boundary_shape = shape(bounding_geom[0])
+        boundary_gdf = gpd.GeoDataFrame(geometry=[boundary_shape], crs=benchmark_crs)
+
+        #Proceed the masking
         out_image1[out_image1 == benchmark_nodata] = 0
         out_image1 = np.where(out_image1 > 0, 2, 0).astype(np.float32)
+
+        #If PWB_Dir is provided, use the local PWB shapefile, else download from ArcGIS API
+        if PWB_Dir is not None:
+            gdf = gpd.read_file(PWB_Dir)
+        else:
+            #Get the permanent water bodies from ArcGIS REST API
+            pwb_obj = ExtractPWB(boundary = boundary_gdf, save = False)
+            gdf = pwb_obj.gdf
+
         gdf = gdf.to_crs(benchmark_crs)
         shapes1 = [
             geom for geom in gdf.geometry if geom is not None and not geom.is_empty
@@ -394,23 +414,18 @@ def safe_delete_folder(folder_path):
 
 def EvaluateFIM(
     main_dir,
-    method_name=None,  
-    output_dir=None,    
+    method_name=None,
+    output_dir=None,
     PWB_dir=None,
     shapefile_dir=None,
     target_crs=None,
     target_resolution=None,
     benchmark_dict=None,
 ):
-    if output_dir is None: 
+    if output_dir is None:
         output_dir = os.path.join(os.getcwd(), "Evaluation_Results")
 
     main_dir = Path(main_dir)
-    # Read the permanent water bodies
-    if PWB_dir is None:
-        gdf = get_PWB()
-    else:
-        gdf = gpd.read_file(PWB_dir)
 
     # Grant the permission to the main directory
     fix_permissions(main_dir)
@@ -429,8 +444,8 @@ def EvaluateFIM(
         if benchmark_path and candidate_path:
             if method_name is None:
                 local_method = "AOI"
-                
-                #For single case, if user have explicitly send boundary, use that, else use the boundary from the benchmark FIM evaluation
+
+                # For single case, if user have explicitly send boundary, use that, else use the boundary from the benchmark FIM evaluation
                 if shapefile_dir is not None:
                     local_shapefile = shapefile_dir
                 else:
@@ -444,20 +459,29 @@ def EvaluateFIM(
                     local_shapefile = str(boundary)
             else:
                 local_method = method_name
-                local_shapefile = shapefile_dir 
+                local_shapefile = shapefile_dir
 
             print(f"**Flood Inundation Evaluation of {folder_dir.name}**")
             try:
                 Metrics = evaluateFIM(
                     benchmark_path,
                     candidate_path,
-                    gdf,
+                    PWB_dir,
                     folder_dir,
                     local_method,
                     output_dir,
-                    shapefile=local_shapefile,  
+                    shapefile=local_shapefile,
                 )
-                print("\n", Metrics, "\n")
+                
+                # Print results in structured table format with 3 decimal points
+                candidate_names = [os.path.splitext(os.path.basename(path))[0] for path in candidate_path]
+                df_display = pd.DataFrame.from_dict(Metrics, orient='index')
+                df_display.columns = candidate_names
+                df_display.reset_index(inplace=True)
+                df_display.rename(columns={'index': 'Metrics'}, inplace=True)
+                print("\n")
+                print(df_display.to_string(index=False, float_format='%.3f'))
+                print("\n")
             except Exception as e:
                 print(f"Error evaluating {folder_dir.name}: {e}")
         else:
@@ -470,7 +494,7 @@ def EvaluateFIM(
     if TIFFfiles_main_dir:
 
         # Ensure benchmark is present if needed
-        TIFFfiles_main_dir = ensure_benchmark( 
+        TIFFfiles_main_dir = ensure_benchmark(
             main_dir, TIFFfiles_main_dir, benchmark_dict
         )
 
@@ -494,12 +518,10 @@ def EvaluateFIM(
                 tif_files = list(folder.glob("*.tif"))
 
                 if tif_files:
-                    processing_folder = folder / "processing"  
+                    processing_folder = folder / "processing"
                     try:
                         # Ensure benchmark is present if needed
-                        tif_files = ensure_benchmark(  
-                            folder, tif_files, benchmark_dict
-                        )
+                        tif_files = ensure_benchmark(folder, tif_files, benchmark_dict)
 
                         MakeFIMsUniform(
                             folder,
@@ -518,4 +540,3 @@ def EvaluateFIM(
                     print(
                         f"Skipping {folder.name} as it doesn't contain any tif files."
                     )
-
