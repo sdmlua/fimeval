@@ -38,12 +38,72 @@ _YMDH_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[ T]\d{2}$")
 _YMDHMS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$")
 
 
+#Support functions to ensute the geopackage file is local
+def _s3_bucket_key_from_http_url(url: str) -> Optional[tuple[str, str]]:
+    try:
+        u = urllib.parse.urlparse(url)
+        host = (u.netloc or "").lower()
+        path = (u.path or "").lstrip("/")
+        if not host or not path:
+            return None
+
+        if ".s3." in host or host.endswith(".s3.amazonaws.com"):
+            bucket = host.split(".s3", 1)[0]
+            key = path
+            return bucket, key
+
+        return None
+    except Exception:
+        return None
+
+
+def _ensure_local_gpkg(uri: str) -> str:
+    """
+    Ensure we can read a GPKG even when uri is an https S3 URL by caching locally.
+    Returns a path usable by geopandas.read_file().
+    """
+    if not isinstance(uri, str) or not uri.strip():
+        return uri
+
+    u = uri.strip()
+    if os.path.exists(u):
+        return u
+
+    # Cache https S3 gpkg locally
+    if u.lower().startswith("http") and ".amazonaws.com/" in u.lower() and u.lower().endswith(".gpkg"):
+        parsed = _s3_bucket_key_from_http_url(u.split("?", 1)[0])
+        if not parsed:
+            return u
+
+        bucket, key = parsed
+        cache_dir = os.path.join(os.path.expanduser("~"), ".fimeval_cache", "aoi_gpkg")
+        os.makedirs(cache_dir, exist_ok=True)
+
+        local = os.path.join(cache_dir, os.path.basename(key))
+        if not os.path.exists(local):
+            _download(bucket, key, local)
+        return local
+    return u
+
 def _normalize_user_dt(s: str) -> str:
     s = s.strip()
     s = s.replace("/", "-")
     s = re.sub(r"\s+", " ", s)
     return s
 
+def _display_raster_name(rec: Dict[str, Any]) -> str:
+    tif_url = rec.get("tif_url")
+    if isinstance(tif_url, str) and tif_url.strip():
+        # drop querystring if any
+        tif_url = tif_url.split("?", 1)[0]
+        return os.path.basename(tif_url)
+
+    # fallback: last path token of id
+    rid = rec.get("id")
+    if isinstance(rid, str) and rid.strip():
+        return rid.strip().split("/")[-1] + ".tif"
+
+    return "NA"
 
 def _to_date(s: str) -> dt.date:
     s = _normalize_user_dt(s)
@@ -186,7 +246,7 @@ def format_records_for_print(
         tier = r.get("tier") or r.get("quality") or "Unknown"
         res = r.get("resolution_m")
         res_txt = f"{res}m" if res is not None else "NA"
-        fname = r.get("file_name") or "NA"
+        fname = _display_raster_name(r)
 
         # Build lines with Tier-aware event text
         lines = [f"Data Tier: {tier}"]
