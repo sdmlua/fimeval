@@ -25,6 +25,7 @@ from .utilis import (
     _record_day,
     _record_hour_or_none,
     _pretty_date_for_print,
+    _ensure_local_gpkg,
 )
 
 # Preferred area CRSs for area calculations
@@ -300,15 +301,28 @@ def _aoi_context_str(
         end_date=end_date,
     )
 
+def _display_raster_name(rec: Dict[str, Any]) -> str:
+    tif_url = rec.get("tif_url")
+    if isinstance(tif_url, str) and tif_url.strip():
+        # drop querystring if any
+        tif_url = tif_url.split("?", 1)[0]
+        return os.path.basename(tif_url)
+
+    # fallback: last path token of id
+    rid = rec.get("id")
+    if isinstance(rid, str) and rid.strip():
+        return rid.strip().split("/")[-1] + ".tif"
+
+    return "NA"
 
 # Build a single printable block, optionally with overlap appended
 def _format_block_with_overlap(
     rec: Dict[str, Any], pct: Optional[float], km2: Optional[float]
 ) -> str:
-    tier = rec.get("tier") or rec.get("quality") or "Unknown"
+    tier = rec.get("tier") or rec.get("HWM") or rec.get("quality") or "Unknown"
     res = rec.get("resolution_m")
     res_txt = f"{res}m" if res is not None else "NA"
-    fname = rec.get("file_name") or "NA"
+    fname = _display_raster_name(rec)
 
     lines = [f"Data Tier: {tier}"]
 
@@ -404,20 +418,23 @@ def _gpkg_urls_from_record(rec: Dict[str, Any]) -> List[str]:
             out.append(u)
     return out
 
-
 def _read_benchmark_aoi_union_geom(rec: Dict[str, Any]) -> Optional[Polygon]:
-    # Read and union AOI geometries referenced by the record (kept permissive)
+    # Read and union AOI geometries referenced by the record
     urls = _gpkg_urls_from_record(rec)
     if not urls:
         return None
+
     geoms: List[Polygon] = []
     for uri in urls:
         try:
             storage_opts = _storage_options_for_uri(uri)
+
+            uri_to_read = _ensure_local_gpkg(uri)
+
             gdf = (
-                gpd.read_file(uri, storage_options=storage_opts)
+                gpd.read_file(uri_to_read, storage_options=storage_opts)
                 if storage_opts
-                else gpd.read_file(uri)
+                else gpd.read_file(uri_to_read)
             )
             if gdf.empty:
                 continue
@@ -429,8 +446,9 @@ def _read_benchmark_aoi_union_geom(rec: Dict[str, Any]) -> Optional[Polygon]:
             u = unary_union(gdf.geometry)
             if not u.is_empty:
                 geoms.append(u)
-        except Exception:
+        except Exception as e:
             continue
+
     if not geoms:
         return None
     uall = unary_union(geoms)

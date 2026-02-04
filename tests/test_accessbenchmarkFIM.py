@@ -1,8 +1,8 @@
 import fimeval as fe
 
 # For testing boundary/raster inputs
-raster_path = "/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SM_prediction/HUC11110203_AR/hf_RS_HUC11110203_AR_binary_BM.tif"  # ./paths/to/your/model_predicted_fim"
-boundary_path = "./paths/to/your/boundaryfile"
+# raster_path = "/Users/supath/Downloads/MSResearch/FIMpef/CodeUsage/SM_prediction/HUC11110203_AR/hf_RS_HUC11110203_AR_binary_BM.tif"  # ./paths/to/your/model_predicted_fim"
+boundary_path = "/Users/Supath/Downloads/HWM_10_0m_20250704_991013W300036N_BM.gpkg"
 
 
 # Benchmark FIM querying
@@ -39,15 +39,15 @@ out_dir:
 
 def test_benchmark_fimquery():
     response = fe.benchFIMquery(
-        raster_path=raster_path,
-        boundary_path=None,
-        huc8=None,  # Example HUC8 ID: "03020202"
+        # raster_path=raster_path,
+        boundary_path=boundary_path,
+        # huc8=None,  # Example HUC8 ID: "03020202"
         # event_date = "2017-05-01",
         # start_date = "2017-04-01",
         # end_date = "2017-05-01",
         # file_name = None,
         area=True,  # Default is false; if True, returns overlap stats
-        # download = False,
+        # download = True,
         # out_dir = None,
     )
     print(response)
