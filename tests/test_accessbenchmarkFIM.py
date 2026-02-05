@@ -40,14 +40,14 @@ out_dir:
 def test_benchmark_fimquery():
     response = fe.benchFIMquery(
         # raster_path=raster_path,
-        boundary_path=boundary_path,
-        # huc8=None,  # Example HUC8 ID: "03020202"
+        # boundary_path=boundary_path,
+        huc8="03020201",  # Example HUC8 ID: "03020202"
         # event_date = "2017-05-01",
         # start_date = "2017-04-01",
-        # end_date = "2017-05-01",
-        # file_name = None,
-        area=True,  # Default is false; if True, returns overlap stats
-        # download = True,
-        # out_dir = None,
+        # end_date = "2026-01-01",
+        # file_name = "BLE_10_0m_500_985556W300139N_BM.tif",
+        # area=True,  # Default is false; if True, returns overlap stats
+        download = True,
+        out_dir = "./downloads/",       #required if download=True
     )
     print(response)

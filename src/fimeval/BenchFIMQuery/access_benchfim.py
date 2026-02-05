@@ -454,6 +454,94 @@ def _read_benchmark_aoi_union_geom(rec: Dict[str, Any]) -> Optional[Polygon]:
     uall = unary_union(geoms)
     return None if uall.is_empty else uall
 
+#For normalizing file name input
+def _normalize_file_name_input(file_name: Any) -> List[str]:
+    """
+    Normalize file_name input into a list of filenames.
+
+    Returns
+    -------
+    List[str]
+        Cleaned, non-empty filenames.
+    """
+    if file_name is None:
+        return []
+
+    # single string
+    if isinstance(file_name, str):
+        s = file_name.strip()
+        return [s] if s else []
+
+    # list/tuple/set of strings
+    if isinstance(file_name, (list, tuple, set)):
+        out: List[str] = []
+        for x in file_name:
+            if isinstance(x, str):
+                s = x.strip()
+                if s:
+                    out.append(s)
+        return out
+
+    raise TypeError(
+        "file_name must be a string, a list/tuple/set of strings, or None."
+    )
+
+#For HUC8 normalization from record
+def _record_huc8_list(rec: Dict[str, Any]) -> List[str]:
+    """
+    Return HUC8s from a record as a normalized list of strings.
+
+      - "huc8": "['03020201','03020202',...]"    (stringified list)
+    """
+    v = rec.get("huc8")
+
+    if v is None:
+        return []
+    if isinstance(v, (list, tuple, set)):
+        out: List[str] = []
+        for x in v:
+            if x is None:
+                continue
+            s = str(x).strip().strip("'").strip('"')
+            if s:
+                out.append(s)
+        return out
+
+    # String forms--> single or stringified list
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return []
+
+        # stringified list like "['03020201', '03020202']"
+        if s.startswith("[") and s.endswith("]"):
+            try:
+                import ast
+                parsed = ast.literal_eval(s)
+                if isinstance(parsed, (list, tuple, set)):
+                    out: List[str] = []
+                    for x in parsed:
+                        if x is None:
+                            continue
+                        t = str(x).strip().strip("'").strip('"')
+                        if t:
+                            out.append(t)
+                    return out
+            except Exception:
+                pass
+
+            inner = s[1:-1].strip()
+            if not inner:
+                return []
+            parts = [p.strip() for p in inner.split(",") if p.strip()]
+            out2: List[str] = []
+            for p in parts:
+                t = p.strip().strip("'").strip('"')
+                if t:
+                    out2.append(t)
+            return out2
+        return [s.strip().strip("'").strip('"')]
+    return [str(v).strip()]
 
 # Main service class
 class benchFIMquery:
@@ -501,7 +589,7 @@ class benchFIMquery:
         event_date: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        file_name: Optional[str] = None,
+        file_name: Optional[str | List[str]] = None,
         area: bool = False,
         download: bool = False,
         out_dir: Optional[str] = None,
@@ -511,20 +599,20 @@ class benchFIMquery:
         This method centralizes all possible combinations of user inputs into
 
         1. **Direct filename download** (no AOI, no dates)
-           If ``file_name`` and ``download=True`` are provided without any raster/boundary/date inputs, the method will locate the matching
-           catalog record by filename, download the FIM and any associated geopackages into ``out_dir``, and return metadata without any formatted listing.
+        If ``file_name`` and ``download=True`` are provided without any raster/boundary/date inputs, the method will locate the matching
+        catalog record by filename(s), download the FIM(s) and any associated geopackages into ``out_dir``, and return metadata without any formatted listing.
 
         2. **AOI-only search (raster or boundary)**
-           If ``raster_path`` or ``boundary_path`` is given without date filters, the method computes the AOI’s WGS84 footprint, intersects
-           it with catalog record bounding boxes, and returns the intersecting benchmark records. When ``area=True``, it additionally downloads
-           the benchmark AOI geopackage(s) and reports the intersection area percentage and area in km² relative to the benchmark AOI.
+        If ``raster_path`` or ``boundary_path`` is given without date filters, the method computes the AOI’s WGS84 footprint, intersects
+        it with catalog record bounding boxes, and returns the intersecting benchmark records. When ``area=True``, it additionally downloads
+        the benchmark AOI geopackage(s) and reports the intersection area percentage and area in km² relative to the benchmark AOI.
 
         3. **AOI + specific date**
-           Combine (2) with ``date_input`` for an exact date (and optional hour) filter before computing intersection (and area metrics if requested).
+        Combine (2) with ``date_input`` for an exact date (and optional hour) filter before computing intersection (and area metrics if requested).
 
         4. **AOI + date range**
-           As in (2) but filtered to benchmarks whose event dates fall within ``[start_date, end_date]`` (inclusive). When ``download=True`` and
-           ``out_dir`` is given, the method downloads all intersecting benchmarks into that directory.
+        As in (2) but filtered to benchmarks whose event dates fall within ``[start_date, end_date]`` (inclusive). When ``download=True`` and
+        ``out_dir`` is given, the method downloads all intersecting benchmarks into that directory.
 
         Parameters
         ----------
@@ -539,8 +627,9 @@ class benchFIMquery:
         start_date, end_date:
             Inclusive date range filter. Either may be ``None`` for open-ended ranges.
         file_name:
-            Exact benchmark FIM filename as listed in the catalog (e.g.``"PSS_3_0m_20170830T162251_BM.tif"``). When provided together
-            with ``download=True`` and *no AOI or date filters*, triggers the direct-filename workflow.
+            Benchmark FIM filename(s) as listed in the catalog (e.g.``"PSS_3_0m_20170830T162251_BM.tif"``).
+            May be a single string or a list of strings. When provided together with ``download=True`` and *no AOI or date filters*,
+            triggers the direct-filename workflow to download only those file(s).
         area:
             If ``True``, and an AOI is supplied, compute the intersection area percentage and area in km² relative to each benchmark AOI geopackage (if present).
         download:
@@ -571,57 +660,83 @@ class benchFIMquery:
             )
 
         # Direct filename-only workflow (no AOI, no dates)
+        file_names = _normalize_file_name_input(file_name)
         if (
-            file_name
+            file_names
             and download
             and aoi_geom is None
             and not any([event_date, start_date, end_date])
         ):
-            fname = file_name.strip()
             recs = self.records
-            if huc8:
-                candidates = [
-                    r
-                    for r in recs
-                    if str(r.get("file_name", "")).strip() == fname
-                    and str(r.get("huc8", "")).strip() == str(huc8).strip()
-                ]
-                if not candidates:
+
+            downloaded_matches: List[Dict[str, Any]] = []
+            not_found: List[str] = []
+
+            out_dir_path = _ensure_dir(out_dir)
+
+            for fname in file_names:
+                if huc8:
+                    huc8_str = str(huc8).strip()
+                    candidates = [
+                        r
+                        for r in recs
+                        if str(r.get("file_name", "")).strip() == fname
+                        and huc8_str in set(_record_huc8_list(r))
+                    ]
+                    if not candidates:
+                        candidates = [
+                            r for r in recs if str(r.get("file_name", "")).strip() == fname
+                        ]
+                else:
                     candidates = [
                         r for r in recs if str(r.get("file_name", "")).strip() == fname
                     ]
-            else:
-                candidates = [
-                    r for r in recs if str(r.get("file_name", "")).strip() == fname
-                ]
 
-            if not candidates:
+                if not candidates:
+                    not_found.append(fname)
+                    continue
+
+                target = candidates[0]
+                dl = download_fim_assets(target, str(out_dir_path))
+                downloaded_matches.append(
+                    {
+                        "record": target,
+                        "bbox_intersects": False,
+                        "intersection_area_pct": None,
+                        "intersection_area_km2": None,
+                        "downloads": dl,
+                    }
+                )
+
+            if not downloaded_matches:
                 return PrettyDict(
                     {
                         "status": "not_found",
-                        "message": f"File name {fname!r} not found in catalog.",
+                        "message": (
+                            "None of the provided file names were found in the catalog: "
+                            + ", ".join(repr(x) for x in not_found)
+                        ),
                         "matches": [],
                         "printable": "",
                     }
                 )
 
-            target = candidates[0]
-            out_dir_path = _ensure_dir(out_dir)
-            dl = download_fim_assets(target, str(out_dir_path))
+            if not_found:
+                msg = (
+                    f"Downloaded {len(downloaded_matches)} benchmark FIM file(s) to '{out_dir_path}'. "
+                    f"Not found: {', '.join(repr(x) for x in not_found)}."
+                )
+                status = "partial"
+            else:
+                msg = f"Downloaded {len(downloaded_matches)} benchmark FIM file(s) to '{out_dir_path}'."
+                status = "ok"
 
             return PrettyDict(
                 {
-                    "status": "ok",
-                    "message": f"Downloaded benchmark FIM '{fname}' to '{out_dir_path}'.",
-                    "matches": [
-                        {
-                            "record": target,
-                            "bbox_intersects": False,
-                            "intersection_area_pct": None,
-                            "intersection_area_km2": None,
-                            "downloads": dl,
-                        }
-                    ],
+                    "status": status,
+                    "message": msg,
+                    "matches": downloaded_matches,
+                    "not_found_files": not_found,
                     "printable": "",
                 }
             )
@@ -630,7 +745,7 @@ class benchFIMquery:
         records = self.records
         if huc8:
             huc8_str = str(huc8).strip()
-            records = [r for r in records if str(r.get("huc8", "")).strip() == huc8_str]
+            records = [r for r in records if huc8_str in set(_record_huc8_list(r))]
 
         # Date filters
         if event_date:
@@ -668,7 +783,7 @@ class benchFIMquery:
                 date_input=event_date,
                 start_date=start_date,
                 end_date=end_date,
-                file_name=file_name,
+                file_name=file_name[0] if isinstance(file_name, list) and file_name else file_name,
             )
             printable = format_records_for_print(
                 [m["record"] for m in matches], context=ctx
@@ -769,7 +884,7 @@ class benchFIMquery:
                 date_input=event_date,
                 start_date=start_date,
                 end_date=end_date,
-                file_name=file_name,
+                file_name=file_name[0] if isinstance(file_name, list) and file_name else file_name,
             )
             header = f"Following are the available benchmark data for {ctx}:\n"
             blocks: List[str] = []
@@ -802,7 +917,7 @@ class benchFIMquery:
         event_date: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        file_name: Optional[str] = None,
+        file_name: Optional[str | List[str]] = None,
         area: bool = False,
         download: bool = False,
         out_dir: Optional[str] = None,
@@ -819,6 +934,5 @@ class benchFIMquery:
             download=download,
             out_dir=out_dir,
         )
-
 
 benchFIMquery = benchFIMquery()
