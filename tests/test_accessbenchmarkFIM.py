@@ -46,8 +46,8 @@ def test_benchmark_fimquery():
         # end_date = "2026-01-01",
         # file_name = "BLE_10_0m_500_985556W300139N_BM.tif",
         # tier = "tier4",  # Example tier filter: "HWM", "Tier1", "Tier2", etc.
-        # area=True,  # Default is false; if True, returns overlap stats
-        download=True,
-        out_dir="../downloads/",  # required if download=True
+        area=True,  # Default is false; if True, returns overlap stats
+        # download=True,
+        # out_dir="../downloads/",  # required if download=True
     )
     print(response)
