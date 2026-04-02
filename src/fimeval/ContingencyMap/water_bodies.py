@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Union, Optional
 from shapely.geometry import box
 
-#USING ANONYMOUS S3 CLIENT TO ACCESS PUBLIC DATA
+# USING ANONYMOUS S3 CLIENT TO ACCESS PUBLIC DATA
 # Initialize an anonymous S3 client
 s3 = boto3.client(
     "s3", config=botocore.config.Config(signature_version=botocore.UNSIGNED)
@@ -60,7 +60,7 @@ def get_PWB():
     return pwb
 
 
-#USING ARCGIS REST TO ACCESS PUBLIC DATA- More fast
+# USING ARCGIS REST TO ACCESS PUBLIC DATA- More fast
 class ExtractPWB:
     SERVICE_URL = "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Detailed_Water_Bodies/FeatureServer/0"
 
@@ -70,11 +70,11 @@ class ExtractPWB:
         layer: Optional[str] = None,
         output_dir: Optional[Union[str, Path]] = None,
         save: bool = True,
-        output_filename: str = "permanent_water.gpkg"
+        output_filename: str = "permanent_water.gpkg",
     ):
         self.boundary_gdf = self._load_boundary(boundary, layer)
         self.output_dir = Path(output_dir) if output_dir else Path.cwd() / "PWBOutputs"
-        
+
         # We store the final result in self.gdf so it can be accessed after init
         self.gdf = self.extract(save=save, output_filename=output_filename)
 
@@ -90,28 +90,39 @@ class ExtractPWB:
         xmin, ymin, xmax, ymax = self.boundary_gdf.total_bounds
         cols = list(np.arange(xmin, xmax, threshold)) + [xmax]
         rows = list(np.arange(ymin, ymax, threshold)) + [ymax]
-        
+
         grid = []
-        for i in range(len(cols)-1):
-            for j in range(len(rows)-1):
-                grid.append({
-                    "xmin": cols[i], "ymin": rows[j], 
-                    "xmax": cols[i+1], "ymax": rows[j+1],
-                    "spatialReference": {"wkid": 4326}
-                })
+        for i in range(len(cols) - 1):
+            for j in range(len(rows) - 1):
+                grid.append(
+                    {
+                        "xmin": cols[i],
+                        "ymin": rows[j],
+                        "xmax": cols[i + 1],
+                        "ymax": rows[j + 1],
+                        "spatialReference": {"wkid": 4326},
+                    }
+                )
         return grid
 
-    def extract(self, save: bool = True, output_filename: str = "permanent_water.gpkg", verbose: bool = True) -> gpd.GeoDataFrame:
+    def extract(
+        self,
+        save: bool = True,
+        output_filename: str = "permanent_water.gpkg",
+        verbose: bool = True,
+    ) -> gpd.GeoDataFrame:
         all_features = []
         query_url = f"{self.SERVICE_URL}/query"
         envelopes = self._get_query_envelopes()
-        
-        permanent_filter = "FTYPE IN ('Lake/Pond', 'Stream/River', 'Reservoir', 'Canal/Ditch')"
+
+        permanent_filter = (
+            "FTYPE IN ('Lake/Pond', 'Stream/River', 'Reservoir', 'Canal/Ditch')"
+        )
 
         for env_idx, env in enumerate(envelopes):
             offset = 0
-            limit = 1000 
-            
+            limit = 1000
+
             while True:
                 payload = {
                     "f": "geojson",
@@ -124,29 +135,31 @@ class ExtractPWB:
                     "returnGeometry": "true",
                     "outSR": "4326",
                     "resultOffset": offset,
-                    "resultRecordCount": limit
+                    "resultRecordCount": limit,
                 }
 
                 try:
                     response = requests.post(query_url, data=payload, timeout=60)
                     response.raise_for_status()
                     data = response.json()
-                    
+
                     features = data.get("features", [])
                     if not features:
-                        break 
-                        
-                    batch_gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
+                        break
+
+                    batch_gdf = gpd.GeoDataFrame.from_features(
+                        features, crs="EPSG:4326"
+                    )
                     all_features.append(batch_gdf)
-                    
+
                     if verbose and offset > 0:
                         print(f"  Grid {env_idx}: Paginated to offset {offset}...")
 
                     if len(features) < limit:
                         break
-                    
+
                     offset += limit
-                    
+
                 except Exception as e:
                     print(f"Error at grid {env_idx}, offset {offset}: {e}")
                     break
@@ -159,7 +172,7 @@ class ExtractPWB:
         full_gdf = pd.concat(all_features, ignore_index=True)
         full_gdf = gpd.GeoDataFrame(full_gdf, crs="EPSG:4326")
         full_gdf = full_gdf.loc[full_gdf.geometry.to_wkt().drop_duplicates().index]
-        
+
         # Clip to exact AOI
         final_gdf = gpd.clip(full_gdf, self.boundary_gdf)
 
@@ -168,8 +181,10 @@ class ExtractPWB:
             self.output_dir.mkdir(parents=True, exist_ok=True)
             output_path = self.output_dir / output_filename
             final_gdf.to_file(output_path, driver="GPKG")
-            if verbose: print(f"Saved {len(final_gdf)} features to {output_path}")
+            if verbose:
+                print(f"Saved {len(final_gdf)} features to {output_path}")
         else:
-            if verbose: print(f"PWB Extraction complete.")
+            if verbose:
+                print(f"PWB Extraction complete.")
 
         return final_gdf

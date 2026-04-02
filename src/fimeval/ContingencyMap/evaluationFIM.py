@@ -2,6 +2,7 @@
 Author: Supath Dhital
 Date Updated: January 2026
 """
+
 import os
 import re
 import numpy as np
@@ -135,20 +136,20 @@ def evaluateFIM(
         benchmark_crs = src1.crs
         b_profile = src1.profile
 
-        #Getting the correct geometry shape and crs to extract PWB
+        # Getting the correct geometry shape and crs to extract PWB
         boundary_shape = shape(bounding_geom[0])
         boundary_gdf = gpd.GeoDataFrame(geometry=[boundary_shape], crs=benchmark_crs)
 
-        #Proceed the masking
+        # Proceed the masking
         out_image1[out_image1 == benchmark_nodata] = 0
         out_image1 = np.where(out_image1 > 0, 2, 0).astype(np.float32)
 
-        #If PWB_Dir is provided, use the local PWB shapefile, else download from ArcGIS API
+        # If PWB_Dir is provided, use the local PWB shapefile, else download from ArcGIS API
         if PWB_Dir is not None:
             gdf = gpd.read_file(PWB_Dir)
         else:
-            #Get the permanent water bodies from ArcGIS REST API
-            pwb_obj = ExtractPWB(boundary = boundary_gdf, save = False)
+            # Get the permanent water bodies from ArcGIS REST API
+            pwb_obj = ExtractPWB(boundary=boundary_gdf, save=False)
             gdf = pwb_obj.gdf
 
         gdf = gdf.to_crs(benchmark_crs)
@@ -472,15 +473,18 @@ def EvaluateFIM(
                     output_dir,
                     shapefile=local_shapefile,
                 )
-                
+
                 # Print results in structured table format with 3 decimal points
-                candidate_names = [os.path.splitext(os.path.basename(path))[0] for path in candidate_path]
-                df_display = pd.DataFrame.from_dict(Metrics, orient='index')
+                candidate_names = [
+                    os.path.splitext(os.path.basename(path))[0]
+                    for path in candidate_path
+                ]
+                df_display = pd.DataFrame.from_dict(Metrics, orient="index")
                 df_display.columns = candidate_names
                 df_display.reset_index(inplace=True)
-                df_display.rename(columns={'index': 'Metrics'}, inplace=True)
+                df_display.rename(columns={"index": "Metrics"}, inplace=True)
                 print("\n")
-                print(df_display.to_string(index=False, float_format='%.3f'))
+                print(df_display.to_string(index=False, float_format="%.3f"))
                 print("\n")
             except Exception as e:
                 print(f"Error evaluating {folder_dir.name}: {e}")

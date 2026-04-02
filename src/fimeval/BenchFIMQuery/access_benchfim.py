@@ -1,7 +1,8 @@
 """
+Author: Supath Dhital, sdhital@ua.edu
+Updated: 02 Apr, 2026
+
 High-level benchmark FIM access and query service.
-Author: Supath Dhital, sdhital@crimson.ua.edu
-Updated: 25 Nov, 2025
 """
 
 from __future__ import annotations
@@ -26,21 +27,30 @@ from .utilis import (
     _record_hour_or_none,
     _pretty_date_for_print,
     _ensure_local_gpkg,
+    _record_huc8_list,
+    _tier_label,
+    _normalize_tier_for_comparison,
+    _is_synthetic_tier,
+    _return_period_text,
+    _tier_summary,
+    find_fims,
+    _folder_from_record,
+    _list_prefix,
+    BUCKET,
+    s3_http_url,
 )
 
 # Preferred area CRSs for area calculations
-AREA_CRS_US = "EPSG:5070"  # for CONUS
-AREA_CRS_GLOBAL = "EPSG:6933"  # WGS 84 / NSIDC EASE-Grid 2.0 Global (equal-area) for rest of world: in future if the data is added into the catalog.
+AREA_CRS_US = "EPSG:5070"
+AREA_CRS_GLOBAL = "EPSG:6933"
 
 
 # Helper: pretty-print container so that print(response) shows the structured text.
-# If "printable" is empty (e.g., download=True), nothing is printed.
 class PrettyDict(dict):
     def __str__(self) -> str:
         txt = self.get("printable", "")
         if isinstance(txt, str) and txt.strip():
             return txt
-        # Empty string when we do not want anything printed (e.g., download=True)
         return ""
 
     __repr__ = __str__
@@ -48,9 +58,7 @@ class PrettyDict(dict):
 
 # Helper functions for catalog / geometry
 def _get_record_bbox_xy(rec: Dict[str, Any]) -> Tuple[float, float, float, float]:
-    """
-    Return WGS84 bbox from the catalog_core
-    """
+    """Return WGS84 bbox from the catalog_core record."""
     cand = None
 
     if "bbox" in rec:
@@ -58,7 +66,6 @@ def _get_record_bbox_xy(rec: Dict[str, Any]) -> Tuple[float, float, float, float
     elif "bbox_wgs84" in rec:
         cand = rec["bbox_wgs84"]
     else:
-        # try explicit keys
         keys_variants = [
             ("xmin", "ymin", "xmax", "ymax"),
             ("minx", "miny", "maxx", "maxy"),
@@ -73,11 +80,8 @@ def _get_record_bbox_xy(rec: Dict[str, Any]) -> Tuple[float, float, float, float
                 )
 
     if cand is None:
-        raise KeyError(
-            "Record does not contain bbox information (bbox_wgs84 / bbox / xmin..ymax)"
-        )
+        raise KeyError("Record does not contain bbox information")
 
-    # dict form
     if isinstance(cand, dict):
         for kx0, ky0, kx1, ky1 in [
             ("xmin", "ymin", "xmax", "ymax"),
@@ -92,14 +96,12 @@ def _get_record_bbox_xy(rec: Dict[str, Any]) -> Tuple[float, float, float, float
                 )
         cand = list(cand.values())
 
-    # string form
     if isinstance(cand, str):
         parts = [p.strip() for p in cand.split(",") if p.strip()]
         if len(parts) != 4:
             raise ValueError(f"Could not parse record bbox string: {cand!r}")
         return tuple(float(p) for p in parts)
 
-    # list / tuple
     if isinstance(cand, (list, tuple)) and len(cand) == 4:
         return tuple(float(v) for v in cand)
     raise ValueError(f"Unrecognized bbox structure on record: {type(cand)!r}")
@@ -110,8 +112,8 @@ def _record_bbox_polygon(rec: Dict[str, Any]) -> Polygon:
     return box(minx, miny, maxx, maxy)
 
 
-# Return AOI polygon in WGS84 from a raster file --> this will be useful when user have model predicted raster and looking for the benchmrk FIM into the database
 def _raster_aoi_polygon_wgs84(path: str) -> Polygon:
+    """Return WGS84 bounding polygon from a raster file."""
     with rasterio.open(path) as ds:
         if ds.crs is None:
             raise ValueError(f"Raster {path} has no CRS; cannot derive WGS84 bbox.")
@@ -122,8 +124,8 @@ def _raster_aoi_polygon_wgs84(path: str) -> Polygon:
     return box(minx, miny, maxx, maxy)
 
 
-# Return AOI polygon in WGS84 from a vector file --> this will be useful when user have model predicted vector and looking for the benchmrk FIM into the database
 def _vector_aoi_polygon_wgs84(path: str) -> Polygon:
+    """Return WGS84 bounding polygon from a vector file."""
     gdf = gpd.read_file(path)
     if gdf.empty:
         raise ValueError(f"Vector file {path} contains no features.")
@@ -144,17 +146,16 @@ def _ensure_dir(path: str | Path) -> Path:
     return p
 
 
-# benchmark FIM filtering by date
 def _filter_by_date_exact(
     records: List[Dict[str, Any]],
     date_input: Optional[str],
 ) -> List[Dict[str, Any]]:
     """
-    Filter records by exact date and optional hour (if provided with date) using catalog date fields.
+    Filter records by exact date and optional hour.
 
-    - If ``date_input`` is None, returns the input list unchanged.
-    - If date-only: keep records whose record-day matches and that have *no* hour info.
-    - If date + hour: keep records whose day and hour both match.
+    - HWM records: match if target_day falls within [start_date_ymd, end_date_ymd].
+    - Tier 1/2/3: match event_ts day (and hour if provided).
+    - Tier 4 (no date): excluded when a date filter is active.
     """
     if date_input is None:
         return records
@@ -164,6 +165,27 @@ def _filter_by_date_exact(
     out: List[Dict[str, Any]] = []
 
     for r in records:
+        # HWM: check if target day is within the event range
+        r_start = r.get("start_date_ymd")
+        r_end = r.get("end_date_ymd")
+        if (
+            isinstance(r_start, str)
+            and r_start.strip()
+            and isinstance(r_end, str)
+            and r_end.strip()
+        ):
+            import datetime as dt
+
+            try:
+                rs = dt.date.fromisoformat(r_start.strip())
+                re_ = dt.date.fromisoformat(r_end.strip())
+                if rs <= target_day <= re_:
+                    out.append(r)
+            except Exception:
+                pass
+            continue
+
+        # Tier 1/2/3: exact day/hour match
         r_day = _record_day(r)
         if r_day != target_day:
             continue
@@ -177,20 +199,47 @@ def _filter_by_date_exact(
     return out
 
 
-# Filter available benchmark FIMs by date range
 def _filter_by_date_range(
     records: List[Dict[str, Any]],
     start_date: Optional[str],
     end_date: Optional[str],
 ) -> List[Dict[str, Any]]:
+    """
+    Filter records by date range [start_date, end_date] (inclusive).
+
+    - HWM: include if the record's event range overlaps the query range.
+    - Tier 1/2/3: include if event_ts date falls within the query range.
+    - Tier 4 (synthetic scenario based FIM): excluded when a date filter is active.
+    """
     if not start_date and not end_date:
         return records
+
+    import datetime as dt
 
     d0 = _to_date(start_date) if start_date else None
     d1 = _to_date(end_date) if end_date else None
 
     out: List[Dict[str, Any]] = []
     for r in records:
+        # HWM: range overlap check
+        r_start = r.get("start_date_ymd")
+        r_end = r.get("end_date_ymd")
+        if (
+            isinstance(r_start, str)
+            and r_start.strip()
+            and isinstance(r_end, str)
+            and r_end.strip()
+        ):
+            try:
+                rs = dt.date.fromisoformat(r_start.strip())
+                re_ = dt.date.fromisoformat(r_end.strip())
+                if (not d1 or rs <= d1) and (not d0 or re_ >= d0):
+                    out.append(r)
+            except Exception:
+                pass
+            continue
+
+        # Tier 1/2/3: event day within query range
         r_day = _record_day(r)
         if not r_day:
             continue
@@ -202,53 +251,38 @@ def _filter_by_date_range(
     return out
 
 
-# Dynamic area CRS selection and overlap stats
+def _filter_by_tier(
+    records: List[Dict[str, Any]],
+    tier: Optional[str],
+) -> List[Dict[str, Any]]:
+    """Filter records by tier label, normalizing both sides for comparison."""
+    if not tier:
+        return records
+    target_t = _normalize_tier_for_comparison(tier)
+    return [
+        r for r in records if _normalize_tier_for_comparison(_tier_label(r)) == target_t
+    ]
+
+
 def _pick_area_crs_for_bounds(bounds: Tuple[float, float, float, float]) -> str:
-    """
-    Choose an appropriate projected CRS based on bbox in WGS84 to calculate the approximate area of overlap between user passed AOI and benchmark AOI
-
-    Logic:
-    - If the bbox centroid is roughly over CONUS, use EPSG:5070.
-    - Otherwise, fall back to global equal-area EPSG:6933.
-
-    Parameters
-    ----------
-    bounds:
-        (minx, miny, maxx, maxy) in EPSG:4326.
-
-    Returns
-    -------
-    str
-        CRS string suitable for GeoPandas .to_crs().
-    """
+    """Choose projected CRS for area calculation based on bbox centroid."""
     minx, miny, maxx, maxy = bounds
     cx = (minx + maxx) / 2.0
     cy = (miny + maxy) / 2.0
-
-    # Rough check whether it is over CONUS
     if -130.0 <= cx <= -60.0 and 20.0 <= cy <= 55.0:
         return AREA_CRS_US
     return AREA_CRS_GLOBAL
 
 
-# Compute the area overlap statistics between user passed AOI/raster and benchmark AOI
 def _compute_area_overlap_stats(
     aoi_geom: Polygon,
     benchmark_geom: Polygon,
 ) -> Tuple[float, float]:
     """
-    Compute intersection area statistics between AOI and benchmark AOI.
-
-    Both geometries are assumed to be in WGS84 (EPSG:4326). They are
-    reprojected to a dynamically chosen projected CRS before area
-    computation.
-
-    The CRS is chosen as:
-    - EPSG:5070 (NAD83 / Conus Albers) if the combined bbox centroid
-      is roughly over CONUS.
-    - EPSG:6933 (WGS84 global equal-area) otherwise.
+    Compute intersection area stats between AOI and benchmark AOI.
+    Both geometries assumed to be WGS84 (EPSG:4326).
+    Returns (overlap_pct, overlap_km2).
     """
-    # Use union bbox to decide which CRS to use
     union_geom = unary_union([aoi_geom, benchmark_geom])
     area_crs = _pick_area_crs_for_bounds(union_geom.bounds)
 
@@ -267,12 +301,11 @@ def _compute_area_overlap_stats(
 
     inter_area_m2 = float(inter.area)
     pct = inter_area_m2 / bench_area_m2 * 100.0
-    area_km2 = inter_area_m2 / 1_000_000.0  # m² → km²
+    area_km2 = inter_area_m2 / 1_000_000.0
 
     return pct, area_km2
 
 
-# For generating context string for user AOI query during display
 def _aoi_context_str(
     has_aoi: bool,
     huc8: Optional[str] = None,
@@ -280,17 +313,22 @@ def _aoi_context_str(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     file_name: Optional[str] = None,
+    tier: Optional[str] = None,
 ) -> str:
+    """Build a readable context string for print headers."""
     if has_aoi:
         parts = ["your given location"]
         if date_input:
             parts.append(f"date '{date_input}'")
         elif start_date or end_date:
             parts.append(f"range {start_date or '-∞'} to {end_date or '∞'}")
+        if tier:
+            parts.append(f"tier '{tier}'")
         if file_name:
             parts.append(f"file '{file_name}'")
         return ", ".join(parts)
-    # fall back to the non-AOI context from utils
+
+    # No AOI: build from HUC and date params
     from .utilis import _context_str as _ctx
 
     return _ctx(
@@ -301,32 +339,29 @@ def _aoi_context_str(
         end_date=end_date,
     )
 
+
 def _display_raster_name(rec: Dict[str, Any]) -> str:
     tif_url = rec.get("tif_url")
     if isinstance(tif_url, str) and tif_url.strip():
-        # drop querystring if any
         tif_url = tif_url.split("?", 1)[0]
         return os.path.basename(tif_url)
-
-    # fallback: last path token of id
     rid = rec.get("id")
     if isinstance(rid, str) and rid.strip():
         return rid.strip().split("/")[-1] + ".tif"
-
     return "NA"
 
-# Build a single printable block, optionally with overlap appended
+
 def _format_block_with_overlap(
     rec: Dict[str, Any], pct: Optional[float], km2: Optional[float]
 ) -> str:
-    tier = rec.get("tier") or rec.get("HWM") or rec.get("quality") or "Unknown"
+    """Build a single printable record block, optionally with overlap stats appended."""
+    tier = _tier_label(rec)
     res = rec.get("resolution_m")
     res_txt = f"{res}m" if res is not None else "NA"
     fname = _display_raster_name(rec)
 
     lines = [f"Data Tier: {tier}"]
 
-    # For synthetic (Tier-4), show return period instead of date.
     if _is_synthetic_tier(rec):
         lines.append(f"Return Period: {_return_period_text(rec)}")
     else:
@@ -348,35 +383,34 @@ def _format_block_with_overlap(
     return "\n".join(lines)
 
 
-# For Tier-4- adding synthetic event year while reflecting the outcomes
-def _is_synthetic_tier(rec: Dict[str, Any]) -> bool:
-    """Return True when the record is a synthetic (Tier_4) event."""
-    tier = str(rec.get("tier") or rec.get("quality") or "").lower()
-    return "tier_4" in tier or tier.strip() == "4"
-
-
-def _return_period_text(rec: Dict[str, Any]) -> str:
+def _format_records_with_summary(
+    records: List[Dict[str, Any]],
+    context: str,
+    area_stats: Optional[List[Tuple[Optional[float], Optional[float]]]] = None,
+) -> str:
     """
-    Build a friendly return-period string like '100-year synthetic flow'.
-    Looks in common fields and falls back if missing.
+    Format a list of records into a printable string with a summary header.
+    area_stats: optional list of (pct, km2) parallel to records; pass None to omit overlap.
     """
-    rp = (
-        rec.get("return_period")
-        or rec.get("return_period_yr")
-        or rec.get("rp")
-        or rec.get("rp_years")
+    if not records:
+        return f"Benchmark FIMs were not matched for {context}."
+
+    tier_sum = _tier_summary(records)
+    summary_line = f"Total benchmark FIMs found: {len(records)}  ({tier_sum})"
+    header = (
+        f"Following are the available benchmark data for {context}:\n{summary_line}\n"
     )
-    if rp is None:
-        return "synthetic flow (return period unknown)"
-    # normalize to int when possible
-    try:
-        rp_int = int(float(str(rp).strip().replace("yr", "").replace("-year", "")))
-        return f"{rp_int}-year synthetic flow"
-    except Exception:
-        return f"{rp} synthetic flow"
+
+    blocks: List[str] = []
+    for i, rec in enumerate(records):
+        pct, km2 = None, None
+        if area_stats and i < len(area_stats):
+            pct, km2 = area_stats[i]
+        blocks.append(_format_block_with_overlap(rec, pct, km2))
+
+    return (header + "\n\n".join(blocks)).strip()
 
 
-# helpers to read AOI GPKG geometry directly
 def _storage_options_for_uri(uri: str) -> Optional[Dict[str, Any]]:
     if isinstance(uri, str) and uri.startswith("s3://"):
         anon = str(os.environ.get("AWS_NO_SIGN_REQUEST", "")).upper() in {
@@ -390,7 +424,7 @@ def _storage_options_for_uri(uri: str) -> Optional[Dict[str, Any]]:
 
 def _gpkg_urls_from_record(rec: Dict[str, Any]) -> List[str]:
     urls: List[str] = []
-    for key in ("aoi_gpkg", "aoi_gpkg_url", "gpkg_url"):
+    for key in ("gpkg_url", "aoi_gpkg_url", "aoi_gpkg"):
         v = rec.get(key)
         if isinstance(v, str) and v.strip():
             urls.append(v.strip())
@@ -418,9 +452,30 @@ def _gpkg_urls_from_record(rec: Dict[str, Any]) -> List[str]:
             out.append(u)
     return out
 
+
+def _gpkg_urls_from_record_folder(rec: Dict[str, Any]) -> List[str]:
+    """
+    Fall back to listing the record's S3 folder when the catalog does not expose
+    explicit GPKG URLs. This is especially useful for HWM records.
+    """
+    try:
+        folder = _folder_from_record(rec)
+    except Exception:
+        return []
+
+    urls: List[str] = []
+    for key in _list_prefix(folder):
+        if key.lower().endswith(".gpkg"):
+            urls.append(s3_http_url(BUCKET, key))
+    return urls
+
+
 def _read_benchmark_aoi_union_geom(rec: Dict[str, Any]) -> Optional[Polygon]:
-    # Read and union AOI geometries referenced by the record
+    """Read and union AOI geometries referenced by the record."""
     urls = _gpkg_urls_from_record(rec)
+
+    if not urls:
+        urls = _gpkg_urls_from_record_folder(rec)
     if not urls:
         return None
 
@@ -428,9 +483,7 @@ def _read_benchmark_aoi_union_geom(rec: Dict[str, Any]) -> Optional[Polygon]:
     for uri in urls:
         try:
             storage_opts = _storage_options_for_uri(uri)
-
             uri_to_read = _ensure_local_gpkg(uri)
-
             gdf = (
                 gpd.read_file(uri_to_read, storage_options=storage_opts)
                 if storage_opts
@@ -446,7 +499,7 @@ def _read_benchmark_aoi_union_geom(rec: Dict[str, Any]) -> Optional[Polygon]:
             u = unary_union(gdf.geometry)
             if not u.is_empty:
                 geoms.append(u)
-        except Exception as e:
+        except Exception:
             continue
 
     if not geoms:
@@ -455,43 +508,48 @@ def _read_benchmark_aoi_union_geom(rec: Dict[str, Any]) -> Optional[Polygon]:
     return None if uall.is_empty else uall
 
 
+def _normalize_file_name_input(file_name: Any) -> List[str]:
+    """Normalize file_name input into a clean list of filenames."""
+    if file_name is None:
+        return []
+    if isinstance(file_name, str):
+        s = file_name.strip()
+        return [s] if s else []
+    if isinstance(file_name, (list, tuple, set)):
+        out: List[str] = []
+        for x in file_name:
+            if isinstance(x, str):
+                s = x.strip()
+                if s:
+                    out.append(s)
+        return out
+    raise TypeError("file_name must be a string, a list/tuple/set of strings, or None.")
+
+
 # Main service class
 class benchFIMquery:
     """
     High-level query helper for benchmark FIMs in S3.
 
-    This class provides a single entry point for all common user workflows:
-    - intersect a user raster or boundary with benchmark FIM footprints
-    - optionally restrict to a specific date or a date range
-    - optionally compute area-of-intersection percentages using the benchmark AOI
-      geopackages stored next to the FIM rasters
-    - optionally download the matched benchmark FIMs (and AOI geopackages)
-      into a local directory
-    - or, as a special-case, fetch a specific benchmark by its filename.
+    Supports:
+    - Direct filename download (no AOI, no dates)
+    - AOI-only search (raster or boundary), optional overlap stats
+    - AOI with exact date (supports HWM date range overlap, Tier 1/2/3 event_ts matching)
+    - AOI with date range
+    - Date range only (no AOI) - returns all matching records with summary
+    - Optional tier filtering--> it accepts 'HWM', 'hwm', 'Tier1', 'tier_1', 'Tier_2', etc.
     """
 
     def __init__(self, catalog: Optional[Dict[str, Any]] = None) -> None:
-        """
-        Create a new service.
-
-        Parameters
-        ----------
-        catalog:
-            Optional pre-loaded catalog dictionary as returned by
-            :func:`load_catalog_core`. If omitted, the catalog is lazily
-            loaded from S3 on first use.
-        """
         self._catalog = catalog
 
     @property
     def records(self) -> List[Dict[str, Any]]:
-        """Return the list of catalog records (lazy-loaded)."""
+        """Return the list of catalog records (lazy-loaded from S3)."""
         if self._catalog is None:
             self._catalog = load_catalog_core()
-        recs = self._catalog.get("records", [])
-        return list(recs)
+        return list(self._catalog.get("records", []))
 
-    # Public query API
     def query(
         self,
         *,
@@ -501,54 +559,43 @@ class benchFIMquery:
         event_date: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        file_name: Optional[str] = None,
+        file_name: Optional[str | List[str]] = None,
+        tier: Optional[str] = None,
         area: bool = False,
         download: bool = False,
         out_dir: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Query benchmark FIMs based on user instructions.
-        This method centralizes all possible combinations of user inputs into
-
-        1. **Direct filename download** (no AOI, no dates)
-           If ``file_name`` and ``download=True`` are provided without any raster/boundary/date inputs, the method will locate the matching
-           catalog record by filename, download the FIM and any associated geopackages into ``out_dir``, and return metadata without any formatted listing.
-
-        2. **AOI-only search (raster or boundary)**
-           If ``raster_path`` or ``boundary_path`` is given without date filters, the method computes the AOI’s WGS84 footprint, intersects
-           it with catalog record bounding boxes, and returns the intersecting benchmark records. When ``area=True``, it additionally downloads
-           the benchmark AOI geopackage(s) and reports the intersection area percentage and area in km² relative to the benchmark AOI.
-
-        3. **AOI + specific date**
-           Combine (2) with ``date_input`` for an exact date (and optional hour) filter before computing intersection (and area metrics if requested).
-
-        4. **AOI + date range**
-           As in (2) but filtered to benchmarks whose event dates fall within ``[start_date, end_date]`` (inclusive). When ``download=True`` and
-           ``out_dir`` is given, the method downloads all intersecting benchmarks into that directory.
+        Query benchmark FIMs.
 
         Parameters
         ----------
-        raster_path:
-            Optional path to a user raster. This can be  model predicted FIM user want to evaluate against benchmark.
-        boundary_path:
-            Instead of raster/ user can also pass vector AOI file
-        huc8:
-            Optional HUC8 string used to limit searches to a specific basin/ This is for within US only..
-        date_input:
-            Exact (possibly hourly) date filter. See :func:`_to_date` docs for accepted formats.
-        start_date, end_date:
-            Inclusive date range filter. Either may be ``None`` for open-ended ranges.
-        file_name:
-            Exact benchmark FIM filename as listed in the catalog (e.g.``"PSS_3_0m_20170830T162251_BM.tif"``). When provided together
-            with ``download=True`` and *no AOI or date filters*, triggers the direct-filename workflow.
-        area:
-            If ``True``, and an AOI is supplied, compute the intersection area percentage and area in km² relative to each benchmark AOI geopackage (if present).
-        download:
-            If ``True``, download matched benchmark FIM rasters and any geopackages into ``out_dir``. When ``False`` (the default), the method performs a read-only query.
-        out_dir:
-            Target directory for downloads. Required when ``download=True``; ignored otherwise.
+        raster_path: path to user raster (model predicted FIM).
+        boundary_path: vector AOI file (.gpkg or similar).
+        huc8: optional HUC8 ID to restrict search.
+        event_date: exact event date filter (e.g. '2017-08-30' or '2017-08-30T16').
+                    For HWM records, matches if the date falls within the event range.
+        start_date, end_date: inclusive date range filter.
+                    For HWM records, matches if the ranges overlap.
+        file_name: exact benchmark filename(s) from the catalog.
+        tier: filter by data tier. Accepts flexible formats: 'HWM', 'hwm',
+              'Tier1', 'tier_1', 'Tier 1', 'Tier_2', 'tier3', 'Tier_4', etc.
+        area: if True and AOI is given, compute overlap % and km².
+        download: if True, download matched rasters/GPKGs to out_dir.
+        out_dir: target directory for downloads (required if download=True).
         """
-        # Validate args and AOI geometry
+        # Validate download args
+        if download and not out_dir:
+            return PrettyDict(
+                {
+                    "status": "error",
+                    "message": "When download=True, you must provide out_dir.",
+                    "matches": [],
+                    "printable": "",
+                }
+            )
+
+        # Build AOI geometry from raster or boundary
         aoi_geom: Optional[Polygon] = None
         if raster_path:
             aoi_geom = _raster_aoi_polygon_wgs84(raster_path)
@@ -560,83 +607,115 @@ class benchFIMquery:
                 else aoi_geom.intersection(boundary_geom)
             )
 
-        if download and not out_dir:
-            return PrettyDict(
-                {
-                    "status": "error",
-                    "message": "When download=True, you must provide out_dir.",
-                    "matches": [],
-                    "printable": "",
-                }
-            )
+        file_names = _normalize_file_name_input(file_name)
 
-        # Direct filename-only workflow (no AOI, no dates)
+        # Direct filename download: file_name with download=True, no AOI or dates
         if (
-            file_name
+            file_names
             and download
             and aoi_geom is None
             and not any([event_date, start_date, end_date])
         ):
-            fname = file_name.strip()
             recs = self.records
-            if huc8:
-                candidates = [
-                    r
-                    for r in recs
-                    if str(r.get("file_name", "")).strip() == fname
-                    and str(r.get("huc8", "")).strip() == str(huc8).strip()
-                ]
-                if not candidates:
+            downloaded_matches: List[Dict[str, Any]] = []
+            not_found: List[str] = []
+            out_dir_path = _ensure_dir(out_dir)
+
+            for fname in file_names:
+                if huc8:
+                    huc8_str = str(huc8).strip()
+                    candidates = [
+                        r
+                        for r in recs
+                        if str(r.get("file_name", "")).strip() == fname
+                        and huc8_str in set(_record_huc8_list(r))
+                    ]
+                    if not candidates:
+                        candidates = [
+                            r
+                            for r in recs
+                            if str(r.get("file_name", "")).strip() == fname
+                        ]
+                else:
                     candidates = [
                         r for r in recs if str(r.get("file_name", "")).strip() == fname
                     ]
-            else:
-                candidates = [
-                    r for r in recs if str(r.get("file_name", "")).strip() == fname
-                ]
 
-            if not candidates:
+                if not candidates:
+                    not_found.append(fname)
+                    continue
+
+                target = candidates[0]
+                dl = download_fim_assets(target, str(out_dir_path))
+                downloaded_matches.append(
+                    {
+                        "record": target,
+                        "bbox_intersects": False,
+                        "intersection_area_pct": None,
+                        "intersection_area_km2": None,
+                        "downloads": dl,
+                    }
+                )
+
+            if not downloaded_matches:
                 return PrettyDict(
                     {
                         "status": "not_found",
-                        "message": f"File name {fname!r} not found in catalog.",
+                        "message": (
+                            "None of the provided file names were found in the catalog: "
+                            + ", ".join(repr(x) for x in not_found)
+                        ),
                         "matches": [],
                         "printable": "",
                     }
                 )
 
-            target = candidates[0]
-            out_dir_path = _ensure_dir(out_dir)
-            dl = download_fim_assets(target, str(out_dir_path))
+            if not_found:
+                msg = (
+                    f"Downloaded {len(downloaded_matches)} benchmark FIM file(s) to '{out_dir_path}'. "
+                    f"Not found: {', '.join(repr(x) for x in not_found)}."
+                )
+                status = "partial"
+            else:
+                msg = f"Downloaded {len(downloaded_matches)} benchmark FIM file(s) to '{out_dir_path}'."
+                status = "ok"
 
             return PrettyDict(
                 {
-                    "status": "ok",
-                    "message": f"Downloaded benchmark FIM '{fname}' to '{out_dir_path}'.",
-                    "matches": [
-                        {
-                            "record": target,
-                            "bbox_intersects": False,
-                            "intersection_area_pct": None,
-                            "intersection_area_km2": None,
-                            "downloads": dl,
-                        }
-                    ],
-                    "printable": "",
+                    "status": status,
+                    "message": msg,
+                    "matches": downloaded_matches,
+                    "not_found_files": not_found,
+                    "printable": msg,
                 }
             )
 
-        # AOI-based workflows
+        # AOI-based workflow: start with all records
         records = self.records
+
+        # HUC8 filter
         if huc8:
             huc8_str = str(huc8).strip()
-            records = [r for r in records if str(r.get("huc8", "")).strip() == huc8_str]
+            records = [r for r in records if huc8_str in set(_record_huc8_list(r))]
+
+        # Tier filter
+        if tier:
+            records = _filter_by_tier(records, tier)
 
         # Date filters
         if event_date:
             records = _filter_by_date_exact(records, event_date)
         elif start_date or end_date:
             records = _filter_by_date_range(records, start_date, end_date)
+
+        # Filename filter for general workflows, including AOI/date queries.
+        if file_names:
+            target_names = {name.strip() for name in file_names if name.strip()}
+            records = [
+                r
+                for r in records
+                if str(r.get("file_name", "")).strip() in target_names
+            ]
 
         if not records:
             return PrettyDict(
@@ -648,44 +727,42 @@ class benchFIMquery:
                 }
             )
 
-        # If no AOI is provided at all
-        if aoi_geom is None:
-            matches = []
-            for r in records:
-                matches.append(
-                    {
-                        "record": r,
-                        "bbox_intersects": False,
-                        "intersection_area_pct": None,
-                        "intersection_area_km2": None,
-                        "downloads": None,
-                    }
-                )
+        ctx = _aoi_context_str(
+            has_aoi=(aoi_geom is not None),
+            huc8=huc8,
+            date_input=event_date,
+            start_date=start_date,
+            end_date=end_date,
+            file_name=file_names[0] if file_names else None,
+            tier=tier,
+        )
 
-            ctx = _aoi_context_str(
-                has_aoi=False,
-                huc8=huc8,
-                date_input=event_date,
-                start_date=start_date,
-                end_date=end_date,
-                file_name=file_name,
-            )
-            printable = format_records_for_print(
-                [m["record"] for m in matches], context=ctx
-            )
+        # No AOI: return filtered records with summary
+        if aoi_geom is None:
+            matches = [
+                {
+                    "record": r,
+                    "bbox_intersects": False,
+                    "intersection_area_pct": None,
+                    "intersection_area_km2": None,
+                    "downloads": None,
+                }
+                for r in records
+            ]
 
             if download:
                 out_dir_path = _ensure_dir(out_dir)
                 for m in matches:
                     m["downloads"] = download_fim_assets(m["record"], str(out_dir_path))
-                msg = (
-                    f"Downloaded {len(matches)} benchmark record(s) "
-                    f"to '{out_dir_path}'."
+                msg = f"Downloaded {len(matches)} benchmark record(s) to '{out_dir_path}'."
+                printable = _format_records_with_summary(
+                    [m["record"] for m in matches], context=ctx
                 )
+                printable = f"{printable}\n\n{msg}"
             else:
-                msg = (
-                    f"Found {len(matches)} benchmark record(s) "
-                    f"for the provided filters."
+                msg = f"Found {len(matches)} benchmark record(s) for the provided filters."
+                printable = _format_records_with_summary(
+                    [m["record"] for m in matches], context=ctx
                 )
 
             return PrettyDict(
@@ -693,11 +770,11 @@ class benchFIMquery:
                     "status": "ok",
                     "message": msg,
                     "matches": matches,
-                    "printable": "" if download else printable,
+                    "printable": printable,
                 }
             )
 
-        # AOI is present: intersect with bbox
+        # AOI is present: spatial intersection with record bboxes
         intersecting: List[Dict[str, Any]] = []
         for r in records:
             try:
@@ -719,6 +796,7 @@ class benchFIMquery:
             )
 
         out_matches: List[Dict[str, Any]] = []
+        area_stats: List[Tuple[Optional[float], Optional[float]]] = []
         out_dir_path = _ensure_dir(out_dir) if (download and out_dir) else None
 
         for rec in intersecting:
@@ -727,13 +805,11 @@ class benchFIMquery:
             downloads = None
 
             if area:
-                # Read AOI geopackages directly (no download) and compute overlap
                 bench_union = _read_benchmark_aoi_union_geom(rec)
                 if bench_union is not None and not bench_union.is_empty:
                     pct, km2 = _compute_area_overlap_stats(aoi_geom, bench_union)
                     intersection_area_pct = pct
                     intersection_area_km2 = km2
-                # If user also requested downloads, do it separately (not needed for area calc)
                 if download and out_dir_path:
                     downloads = download_fim_assets(rec, str(out_dir_path))
 
@@ -749,40 +825,23 @@ class benchFIMquery:
                     "downloads": downloads,
                 }
             )
+            area_stats.append((intersection_area_pct, intersection_area_km2))
 
         if download and out_dir_path:
-            msg = (
-                f"Downloaded {len(out_matches)} intersecting benchmark "
-                f"record(s) to '{out_dir_path}'."
+            msg = f"Downloaded {len(out_matches)} intersecting benchmark record(s) to '{out_dir_path}'."
+            printable = _format_records_with_summary(
+                [m["record"] for m in out_matches],
+                context=ctx,
+                area_stats=area_stats if area else None,
             )
-            printable = ""
+            printable = f"{printable}\n\n{msg}"
         else:
-            msg = (
-                f"Found {len(out_matches)} benchmark record(s) "
-                f"intersecting the AOI."
+            msg = f"Found {len(out_matches)} benchmark record(s) intersecting the AOI."
+            printable = _format_records_with_summary(
+                [m["record"] for m in out_matches],
+                context=ctx,
+                area_stats=area_stats if area else None,
             )
-
-            # Build per-record blocks; if area=True, append overlap line inside each block
-            ctx = _aoi_context_str(
-                has_aoi=True,
-                huc8=huc8,
-                date_input=event_date,
-                start_date=start_date,
-                end_date=end_date,
-                file_name=file_name,
-            )
-            header = f"Following are the available benchmark data for {ctx}:\n"
-            blocks: List[str] = []
-            for m in out_matches:
-                rec = m["record"]
-                pct = m.get("intersection_area_pct")
-                km2 = m.get("intersection_area_km2")
-                if area:
-                    blocks.append(_format_block_with_overlap(rec, pct, km2))
-                else:
-                    # reuse original block style without overlap
-                    blocks.append(_format_block_with_overlap(rec, None, None))
-            printable = header + "\n\n".join(blocks)
 
         return PrettyDict(
             {
@@ -802,7 +861,8 @@ class benchFIMquery:
         event_date: Optional[str] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        file_name: Optional[str] = None,
+        file_name: Optional[str | List[str]] = None,
+        tier: Optional[str] = None,
         area: bool = False,
         download: bool = False,
         out_dir: Optional[str] = None,
@@ -815,6 +875,7 @@ class benchFIMquery:
             start_date=start_date,
             end_date=end_date,
             file_name=file_name,
+            tier=tier,
             area=area,
             download=download,
             out_dir=out_dir,
