@@ -45,7 +45,14 @@ def test_evaluation_framework():
     # fe.EvaluateFIM(Main_dir, method_name, output_dir)
 
     # If the FIMS are not in projected crs or are in different spatial resolution
-    fe.EvaluateFIM(Main_dir, method_name, output_dir, target_crs=target_crs, shapefile_dir = AOI, target_resolution=target_resolution)
+    fe.EvaluateFIM(
+        Main_dir,
+        method_name,
+        output_dir,
+        target_crs=target_crs,
+        shapefile_dir=AOI,
+        target_resolution=target_resolution,
+    )
 
     """
     If user is passing with specified benchmark FIMs used from the benchmark FIM catalog as a dictionary.
@@ -63,7 +70,9 @@ def test_evaluation_framework():
 
     # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset retrieved using ArcGIS REST API)
     # It will use the evaluation boundary to retrieve the building footprints
-    fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, shapefile_dir=AOI)
+    fe.EvaluationWithBuildingFootprint(
+        Main_dir, method_name, output_dir, shapefile_dir=AOI
+    )
 
     # If user have their own building footprint dataset, they can use it as well
     # fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint=building_footprint)
