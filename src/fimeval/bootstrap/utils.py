@@ -16,10 +16,9 @@ from rasterio.transform import rowcol
 import os
 import math
 
-
 def sample_confusion_values(points, confusion_raster, transform):
     """
-    Codes Mapping: TN=1, FP=2, FN=3, TP=4
+    Confusion Matrix Mapping: TN=1, FP=2, FN=3, TP=4
     """
     sampled = []
     h, w = confusion_raster.shape
@@ -31,7 +30,7 @@ def sample_confusion_values(points, confusion_raster, transform):
         
         if 0 <= row < h and 0 <= col < w:
             val = confusion_raster[row, col]
-            if np.isnan(val) or val == 0: # Assuming 0 is background/nodata
+            if np.isnan(val) or val == 0:
                 sampled.append(None)
             else:
                 sampled.append(int(val)) 
@@ -75,7 +74,6 @@ def compute_metrics(sampled_vals):
     pe = ((((TP + FP) * (TP + FN)) + ((FN + TN) * (FP + TN))) / (N ** 2)) if N > 0 else 0.0
     kappa = (po - pe) / (1 - pe) if (1 - pe) != 0 else 0.0
 
-
     csi = TP / (TP + FP + FN) if (TP + FP + FN) > 0 else 0.0
     pod = TP / (TP + FN) if (TP + FN) > 0 else 0.0
     far = FP / (TP + FP) if (TP + FP) > 0 else 0.0
@@ -104,7 +102,7 @@ def plot_metric_boxplots(df, metrics=("CSI", "FAR", "F1","POD","MCC","Kappa"), s
     if output_folder:
         os.makedirs(output_folder, exist_ok=True)
         output_png = os.path.join(output_folder, filename)
-        plt.savefig(output_png, dpi=450, bbox_inches="tight")
-        print(f"📊 Boxplot saved as: {output_png}")
+        plt.savefig(output_png, dpi=500, bbox_inches="tight")
+        print(f"Boxplot saved as: {output_png}")
 
     plt.show()

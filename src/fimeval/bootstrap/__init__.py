@@ -1,3 +1,3 @@
-from .bootstrap_runner import run_bootstrap
+from .run_bootstrap import run_bootstrap
 
 __all__ = ["run_bootstrap"]

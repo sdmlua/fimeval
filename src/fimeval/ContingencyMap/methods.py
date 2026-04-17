@@ -94,6 +94,9 @@ def AOI(benchmark_path, shapefile_path, save_dir):
     return bounding_geom
 
 # Method 4: Intersected Extent
+"""
+Calculates the intersection of valid data footprints across the benchmark and candidate FIM rasters to define a common evaluation domain.
+"""
 def get_valid_footprint(raster_path):
     with rasterio.open(raster_path) as src:
         arr = src.read(1, masked=True)
@@ -114,7 +117,7 @@ def get_valid_footprint(raster_path):
 
         if not unified_geom.is_valid:
             unified_geom = unified_geom.buffer(0)
-
+ 
         return unified_geom, src.crs
 
 
@@ -160,4 +163,4 @@ def intersected_extent(benchmark_path, *candidate_paths, save_dir=None):
         )
         gdf_out.to_file(intersection_shapefile, driver="ESRI Shapefile")
 
-    return [mapping(intersection_geom)]
+    return [mapping(intersection_geom)], intersection_geom, benchmark_crs

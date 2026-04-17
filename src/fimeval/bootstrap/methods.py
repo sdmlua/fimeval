@@ -1,3 +1,19 @@
+"""
+Author: Dipsikha Devi, Supath Dhital (sdhital@ua.edu)
+Date updated April 2026
+
+This consists of the three bootstrap sampling methods that are available in 
+FIMeval for evaluating the FIMs with the benchmark. The methods are:
+1. Random Sampling
+2. Systematic Sampling
+3. Stratified Sampling
+
+This can be included only if user decide to move forward with the bootstrap-based evaluation in the main evaluation.
+The user can choose to run one or more of these methods for their evaluation. Each method will generate a set of 
+sample points and compute evaluation metrics based on the confusion raster values at those points. 
+The results can be saved as CSV files and visualized with boxplots for each metric.
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -6,12 +22,20 @@ import geopandas as gpd
 from shapely.geometry import Point, mapping
 from rasterio.mask import mask
 
-from fimeval.domain import intersected_extent
 from .utils import (
     sample_confusion_values,
     compute_metrics,
     plot_metric_boxplots,
 )
+
+
+def build_output_stem(contingency_raster_path, method_name):
+    candidate_name = os.path.splitext(os.path.basename(contingency_raster_path))[0]
+    candidate_name = candidate_name.replace("ContingencyMAP_", "", 1)
+    method_name = method_name.lower().replace(" ", "_")
+    return f"{method_name}_{candidate_name}"
+
+
 # Random Sampling
 def generate_random_points(polygon, n_points, rng=None, max_attempt_factor=50):
     if rng is None:
@@ -35,41 +59,36 @@ def generate_random_points(polygon, n_points, rng=None, max_attempt_factor=50):
     return points
 
 def bootstrap_random_sampling(
-    benchmark_path,
-    candidate_paths,
-    confusion_raster_path,
+    contingency_raster_path,
+    intersection_geom,
+    intersection_crs,
     n_iterations,
     n_points,
     seed=None,
-    spacing_range=None,
     save_points=False,
     save_every=1,
     output_folder=None,
     plot_metrics=False
 ):
     rng = np.random.default_rng(seed)
+    output_stem = build_output_stem(contingency_raster_path, "random")
     
     sampling_dir = os.path.join(output_folder, "Random_Sampling") if output_folder else None
     if sampling_dir:
         os.makedirs(sampling_dir, exist_ok=True)
 
-    # Load Confusion Raster once
-    with rasterio.open(confusion_raster_path) as src:
-        conf_arr = src.read(1)
-        conf_transform = src.transform
-        conf_crs = src.crs
+    # Load Contingency Raster once
+    with rasterio.open(contingency_raster_path) as src:
+        cont_arr = src.read(1)
+        cont_transform = src.transform
+        cont_crs = src.crs
 
-    # Get the valid area where all rasters overlap
-    mapping_geom, intersection_geom, intersection_crs = intersected_extent(
-    benchmark_path, *candidate_paths, save_dir=sampling_dir
-)
-
-    # CRITICAL: If intersection CRS != Raster CRS, metrics will be 0.
-    # We will work in the confusion raster's coordinate system.
-    if intersection_crs != conf_crs:
-        gdf_inter = gpd.GeoDataFrame({"geometry": [intersection_geom]}, crs=intersection_crs).to_crs(conf_crs)
+    # If intersection CRS != Raster CRS, metrics will be 0.
+    # We will work in the contingency raster's coordinate system.
+    if intersection_crs != cont_crs:
+        gdf_inter = gpd.GeoDataFrame({"geometry": [intersection_geom]}, crs=intersection_crs).to_crs(cont_crs)
         intersection_geom = gdf_inter.geometry.iloc[0]
-        active_crs = conf_crs
+        active_crs = cont_crs
     else:
         active_crs = intersection_crs
 
@@ -77,8 +96,8 @@ def bootstrap_random_sampling(
 
     for i in range(1, n_iterations + 1):
         pts = generate_random_points(intersection_geom, n_points, rng=rng)
-        sampled = sample_confusion_values(pts, conf_arr, conf_transform)
-        
+        sampled = sample_confusion_values(pts, cont_arr, cont_transform)
+
         m = compute_metrics(sampled)
         m["iteration"] = i
         results.append(m)
@@ -88,12 +107,12 @@ def bootstrap_random_sampling(
 
         if save_points and (i % save_every == 0):
             gdf_pts = gpd.GeoDataFrame({"sample_val": sampled}, geometry=pts, crs=active_crs)
-            out_p = os.path.join(sampling_dir, f"random_points_iter_{i:03d}.shp")
+            out_p = os.path.join(sampling_dir, f"{output_stem}_points_iter_{i:03d}.shp")
             gdf_pts.to_file(out_p)
 
     results_df = pd.DataFrame(results)
     if sampling_dir:
-        results_df.to_csv(os.path.join(sampling_dir, "Random_sampling.csv"), index=False)
+        results_df.to_csv(os.path.join(sampling_dir, f"{output_stem}.csv"), index=False)
 
     if plot_metrics:
         plot_metric_boxplots(
@@ -101,13 +120,12 @@ def bootstrap_random_sampling(
             metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa"),
             sampling_type="Random Sampling",
             output_folder=sampling_dir,
-            filename="Random_Sampling.png"
+            filename=f"{output_stem}.png"
         )
 
     return results_df
 
 # Systematic Sampling
-
 def generate_fishnet_centroids(polygon, spacing):
     """
     Generate systematic fishnet centroids inside a polygon using given spacing.
@@ -147,9 +165,9 @@ def generate_fishnet_centroids(polygon, spacing):
 
 
 def bootstrap_systematic_sampling(
-    benchmark_path,
-    candidate_paths,
-    confusion_raster_path,
+    contingency_raster_path,
+    intersection_geom,
+    intersection_crs,
     n_iterations,
     spacing_range,
     seed=None,
@@ -189,6 +207,7 @@ def bootstrap_systematic_sampling(
     results_df : pandas.DataFrame
     """
     rng = np.random.default_rng(seed)
+    output_stem = build_output_stem(contingency_raster_path, "systematic")
 
     sampling_dir = (
         os.path.join(output_folder, "Systematic_Sampling") if output_folder else None
@@ -196,18 +215,13 @@ def bootstrap_systematic_sampling(
     if sampling_dir:
         os.makedirs(sampling_dir, exist_ok=True)
 
-    # Load confusion raster once
-    with rasterio.open(confusion_raster_path) as src:
+    # Load contingency raster once
+    with rasterio.open(contingency_raster_path) as src:
         conf_arr = src.read(1)
         conf_transform = src.transform
         conf_crs = src.crs
 
-    # Get the valid area where all rasters overlap
-    mapping_geom, intersection_geom, intersection_crs = intersected_extent(
-        benchmark_path, *candidate_paths, save_dir= sampling_dir
-    )
-
-    # Reproject intersection geometry to confusion raster CRS if needed
+    # Reproject intersection geometry to contingency raster CRS if needed
     if intersection_crs != conf_crs:
         gdf_inter = gpd.GeoDataFrame(
             {"geometry": [intersection_geom]},
@@ -252,14 +266,14 @@ def bootstrap_systematic_sampling(
                 geometry=pts,
                 crs=active_crs
             )
-            out_p = os.path.join(sampling_dir, f"systematic_points_iter_{i:03d}.shp")
+            out_p = os.path.join(sampling_dir, f"{output_stem}_points_iter_{i:03d}.shp")
             gdf_pts.to_file(out_p)
 
     results_df = pd.DataFrame(results)
 
     if output_folder:
         results_df.to_csv(
-            os.path.join(sampling_dir, "Systematic_sampling.csv"),
+            os.path.join(sampling_dir, f"{output_stem}.csv"),
             index=False
         )
     if plot_metrics:
@@ -268,7 +282,7 @@ def bootstrap_systematic_sampling(
             metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa"),
             sampling_type="Systematic Sampling",
             output_folder=sampling_dir,
-            filename="Systematic_Sampling.png"
+            filename=f"{output_stem}.png"
         )
 
     return results_df
@@ -364,13 +378,13 @@ def reproject_points(points, src_crs, dst_crs):
     return list(gdf.geometry)
 
 def bootstrap_stratified_sampling(
-    benchmark_path,
-    candidate_paths,
-    confusion_raster_path,
+    contingency_raster_path,
+    intersection_geom,
+    intersection_crs,
     n_iterations,
     n_points,
+    benchmark_path,
     seed=None,
-    spacing_range=None,
     save_points=False,
     save_every=1,
     output_folder=None,
@@ -382,6 +396,7 @@ def bootstrap_stratified_sampling(
     to confusion CRS before confusion-value sampling.
     """
     rng = np.random.default_rng(seed)
+    output_stem = build_output_stem(contingency_raster_path, "stratified")
 
     sampling_dir = (
         os.path.join(output_folder, "Stratified_Sampling") if output_folder else None
@@ -389,16 +404,11 @@ def bootstrap_stratified_sampling(
     if sampling_dir:
         os.makedirs(sampling_dir, exist_ok=True)
 
-    # Load confusion raster
-    with rasterio.open(confusion_raster_path) as src:
-        conf_arr = src.read(1).astype("float32")
-        conf_transform = src.transform
-        conf_crs = src.crs
-
-    # Intersect valid footprints
-    _, intersection_geom, intersection_crs = intersected_extent(
-        benchmark_path, *candidate_paths, save_dir=output_folder
-    )
+    # Load contingency raster
+    with rasterio.open(contingency_raster_path) as src:
+        cont_arr = src.read(1).astype("float32")
+        cont_transform = src.transform
+        cont_crs = src.crs
 
     # Read benchmark CRS
     with rasterio.open(benchmark_path) as bsrc:
@@ -431,11 +441,11 @@ def bootstrap_stratified_sampling(
             rng=rng
         )
 
-        # Reproject points to confusion CRS for sampling
-        pts_conf = reproject_points(pts_benchmark, binary_crs, conf_crs)
+        # Reproject points to contingency CRS for sampling
+        pts_cont = reproject_points(pts_benchmark, binary_crs, cont_crs)
 
-        # Sample confusion raster
-        sampled = sample_confusion_values(pts_conf, conf_arr, conf_transform)
+        # Sample contingency raster
+        sampled = sample_confusion_values(pts_cont, cont_arr, cont_transform)
 
         n_valid = sum(v in (1, 2, 3, 4) for v in sampled)
         if i == 1:
@@ -463,15 +473,15 @@ def bootstrap_stratified_sampling(
                 geometry=pts_benchmark,
                 crs=binary_crs
             )
-            out_p = os.path.join(sampling_dir, f"stratified_points_iter_{i:03d}.shp")
+            out_p = os.path.join(sampling_dir, f"{output_stem}_points_iter_{i:03d}.shp")
             gdf_pts.to_file(out_p)
 
     results_df = pd.DataFrame(results)
 
     if output_folder:
-        results_csv = os.path.join(sampling_dir, "Stratified_Sampling.csv")
+        results_csv = os.path.join(sampling_dir, f"{output_stem}.csv")
         results_df.to_csv(results_csv, index=False)
-        print(f"✅ Results saved: {results_csv}")
+        print(f" Results saved: {results_csv}")
 
     if plot_metrics:
         plot_metric_boxplots(
@@ -479,7 +489,7 @@ def bootstrap_stratified_sampling(
             metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa"),
             sampling_type="Stratified Sampling",
             output_folder=sampling_dir,
-            filename="Stratified_Sampling.png"
+            filename=f"{output_stem}.png"
         )
 
     return results_df
