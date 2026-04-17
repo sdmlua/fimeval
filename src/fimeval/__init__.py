@@ -16,6 +16,8 @@ from .BenchFIMQuery.access_benchfim import benchFIMquery
 # Building Footprint module
 from .BuildingFootprint.arcgis_API import getBuildingFootprint
 
+from .bootstrap import run_bootstrap
+
 __all__ = [
     "EvaluateFIM",
     "PrintContingencyMap",
@@ -26,4 +28,5 @@ __all__ = [
     "benchFIMquery",
     "getBuildingFootprint",
     "ExtractPWB",
+    "run_bootstrap",
 ]

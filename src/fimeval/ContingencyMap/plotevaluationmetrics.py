@@ -13,7 +13,7 @@ def PlotMetrics(csv_path, method_path):
     # Keep only the desired metrics
     metrics = metrics_df.loc[
         metrics_df["Metrics"].isin(
-            ["CSI_values", "POD_values", "Acc_values", "Prec_values", "F1_values"]
+            ["CSI_values", "POD_values", "Acc_values", "Prec_values", "F1_values", "MCC_values", "kappa_values"]
         )
     ].copy()
 
@@ -25,6 +25,8 @@ def PlotMetrics(csv_path, method_path):
             "Acc_values": "Accuracy",
             "Prec_values": "Precision",
             "F1_values": "F1 Score",
+            "MCC_values": "MCC",
+            "kappa_values":"Kappa"
         }
     )
 

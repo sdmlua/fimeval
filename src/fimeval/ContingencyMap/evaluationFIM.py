@@ -25,7 +25,7 @@ import warnings
 
 warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
 
-from .methods import AOI, convex_hull, smallest_extent, get_smallest_raster_path
+from .methods import AOI, convex_hull, smallest_extent, get_smallest_raster_path, intersected_extent
 from .metrics import evaluationmetrics
 from .water_bodies import ExtractPWB
 from ..utilis import MakeFIMsUniform, benchmark_name, find_best_boundary
@@ -90,6 +90,8 @@ def evaluateFIM(
     F1_values = []
     POD_values = []
     FPR_values = []
+    MCC_values=[]
+    kappa_values=[]
     Merged = []
     Unique = []
     FAR_values = []
@@ -126,6 +128,11 @@ def evaluateFIM(
     else:
         print(f"**{method.__name__} is processing**")
         bounding_geom = method(smallest_raster_path, save_dir=save_dir)
+
+    if method.__name__== "intersected_extent":
+        bounding_geom = method(benchmark_path, *candidate_paths,save_dir=save_dir)
+    else:
+        bounding_geom= method(smallest_raster_path,save_dir=save_dir)
 
     # Read and process benchmark raster
     with rasterio.open(benchmark_path) as src1:
@@ -299,8 +306,9 @@ def evaluateFIM(
                                 out_image1.shape,
                                 out_transform1,
                             )
-                            merged = out_image1 + out_image2_resized
-                            merged[merged == 7] = 5
+                            merged1 = out_image1.astype(np.uint8) + out_image2_resized.astype(np.uint8)
+                            merged= np.where(merged1 == 7, 5, merged1).astype(np.uint8)
+                            
 
             # Get Evaluation Metrics
             (
@@ -318,9 +326,11 @@ def evaluateFIM(
                 F1_score,
                 POD,
                 FPR,
+                mcc,
+                kappa,
                 merged,
                 FAR,
-            ) = evaluationmetrics(out_image1, out_image2_resized)
+            ) = evaluationmetrics(merged)
 
             # Append values to the lists
             csi_values.append(CSI)
@@ -336,6 +346,8 @@ def evaluateFIM(
             F1_values.append(F1_score)
             POD_values.append(POD)
             FPR_values.append(FPR)
+            MCC_values.append(mcc)
+            kappa_values.append(kappa)
             Merged.append(merged)
             Unique.append(unique_values)
             FAR_values.append(FAR)
@@ -354,6 +366,8 @@ def evaluateFIM(
         "F1_values": F1_values,
         "POD_values": POD_values,
         "FPR_values": FPR_values,
+        "MCC_values":MCC_values,
+        "kappa_values":kappa_values,
         # 'Merged': Merged,
         #  'Unique': Unique
         "FAR_values": FAR_values,
