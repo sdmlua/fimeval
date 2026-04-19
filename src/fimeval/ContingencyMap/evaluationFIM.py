@@ -25,15 +25,22 @@ import warnings
 
 warnings.filterwarnings("ignore", category=rasterio.errors.ShapeSkipWarning)
 
-from .methods import AOI, convex_hull, smallest_extent, get_smallest_raster_path, intersected_extent
+from .methods import (
+    AOI,
+    bootstrap,
+    convex_hull,
+    smallest_extent,
+    get_smallest_raster_path,
+    intersected_extent,
+)
 from .metrics import evaluationmetrics
 from .water_bodies import ExtractPWB
 from ..utilis import MakeFIMsUniform, benchmark_name, find_best_boundary
 from ..setup_benchFIM import ensure_benchmark
 
-
-#Importing the bootstrap methods
+# Importing the bootstrap methods
 from ..bootstrap.run_bootstrap import run_bootstrap
+
 
 # giving the permission to the folder
 def is_writable(path):
@@ -77,7 +84,21 @@ def fix_permissions(path):
 
 # Function for the evalution of the model
 def evaluateFIM(
-    benchmark_path, candidate_paths, PWB_Dir, folder, method, output_dir, shapefile=None, sub_method=None, n_iterations=100, n_points=500, spacing_range=None, seed=None, save_points=False, save_every=1, plot_metrics=False
+    benchmark_path,
+    candidate_paths,
+    PWB_Dir,
+    folder,
+    method,
+    output_dir,
+    shapefile=None,
+    sub_method=None,
+    n_iterations=100,
+    n_points=500,
+    spacing_range=None,
+    seed=None,
+    save_points=False,
+    save_every=1,
+    plot_metrics=False,
 ):
     # Lists to store evaluation metrics
     csi_values = []
@@ -93,16 +114,17 @@ def evaluateFIM(
     F1_values = []
     POD_values = []
     FPR_values = []
-    MCC_values=[]
-    kappa_values=[]
+    MCC_values = []
+    kappa_values = []
     Merged = []
     Unique = []
     FAR_values = []
 
     # Dynamically call the specified method
+    requested_method = method
     method = globals().get(method)
     if method is None:
-        raise ValueError(f"Method '{method}' is not defined.")
+        raise ValueError(f"Method '{requested_method}' is not defined.")
 
     # Save the smallest extent boundary and cliped FIMS
     save_dir = os.path.join(output_dir, os.path.basename(folder), f"{method.__name__}")
@@ -130,7 +152,9 @@ def evaluateFIM(
 
     elif method.__name__ == "bootstrap" or method.__name__ == "intersected_extent":
         print(f"**{method.__name__} is processing**")
-        bounding_geom, intersection_geom, intersection_crs = method(benchmark_path, *candidate_paths,save_dir=save_dir)
+        bounding_geom, intersection_geom, intersection_crs = method(
+            benchmark_path, *candidate_paths, save_dir=save_dir
+        )
     else:
         bounding_geom = method(smallest_raster_path, save_dir=save_dir)
 
@@ -306,9 +330,10 @@ def evaluateFIM(
                                 out_image1.shape,
                                 out_transform1,
                             )
-                            merged1 = out_image1.astype(np.uint8) + out_image2_resized.astype(np.uint8)
-                            merged= np.where(merged1 == 7, 5, merged1).astype(np.uint8)
-                            
+                            merged1 = out_image1.astype(
+                                np.uint8
+                            ) + out_image2_resized.astype(np.uint8)
+                            merged = np.where(merged1 == 7, 5, merged1).astype(np.uint8)
 
             # Get Evaluation Metrics
             (
@@ -366,8 +391,8 @@ def evaluateFIM(
         "F1_values": F1_values,
         "POD_values": POD_values,
         "FPR_values": FPR_values,
-        "MCC_values":MCC_values,
-        "kappa_values":kappa_values,
+        "MCC_values": MCC_values,
+        "kappa_values": kappa_values,
         # 'Merged': Merged,
         #  'Unique': Unique
         "FAR_values": FAR_values,
@@ -461,14 +486,14 @@ def EvaluateFIM(
     target_crs=None,
     target_resolution=None,
     benchmark_dict=None,
-    sub_method=None, 
-    n_iterations=100, 
-    n_points=500, 
-    spacing_range=None, 
-    seed=None, 
-    save_points=False, 
-    save_every=1, 
-    plot_metrics=False
+    sub_method=None,
+    n_iterations=100,
+    n_points=500,
+    spacing_range=None,
+    seed=None,
+    save_points=False,
+    save_every=1,
+    plot_metrics=False,
 ):
     if output_dir is None:
         output_dir = os.path.join(os.getcwd(), "Evaluation_Results")

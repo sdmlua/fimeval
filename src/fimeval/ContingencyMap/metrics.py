@@ -4,7 +4,7 @@ import math
 
 # Get all the evaluation metrics
 def evaluationmetrics(merged):
-    #merged = out_image1 + out_image2
+    # merged = out_image1 + out_image2
     unique_values, counts = np.unique(merged, return_counts=True)
     class_pixel_counts = dict(zip(unique_values, counts))
     class_pixel_counts
@@ -33,7 +33,9 @@ def evaluationmetrics(merged):
     den = math.sqrt(den_term) if den_term > 0 else 0.0
     mcc = ((TP * TN) - (FP * FN)) / den if den > 0 else 0.0
     po = Acc
-    pe = ((((TP + FP) * (TP + FN)) + ((FN + TN) * (FP + TN))) / (N ** 2)) if N > 0 else 0.0
+    pe = (
+        ((((TP + FP) * (TP + FN)) + ((FN + TN) * (FP + TN))) / (N**2)) if N > 0 else 0.0
+    )
     kappa = (po - pe) / (1 - pe) if (1 - pe) != 0 else 0.0
 
     return (

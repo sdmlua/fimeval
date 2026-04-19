@@ -16,7 +16,7 @@ from .BenchFIMQuery.access_benchfim import benchFIMquery
 # Building Footprint module
 from .BuildingFootprint.arcgis_API import getBuildingFootprint
 
-#include the bootstrap module
+# include the bootstrap module
 from .bootstrap.run_bootstrap import run_bootstrap
 
 __all__ = [

@@ -4,22 +4,20 @@ import os
 
 Main_dir = (
     # "../docs/sampledata"
-    "/Users/Supath/Downloads/SDML/FIMeval/test_fimeval"
 )
 
 PWD_dir = "./path/to/PWB"
 output_dir = (
     # "./path/to/output"  # This is the output directory where the results will be saved
-    "../fimeval_output"
 )
 target_crs = "EPSG:5070"  # Target CRS for reprojecting the FIMs, need to be in EPSG code of Projected CRS
 target_resolution = 10  # This will be in meters, if it passes the FIMS will be resampled to this resolution else, it will find the coarser resolution among all FIMS for this case and use that to resample!
 
-#building_footprint = "path/to/building_footprint.shp"  # If user is working with user defined building footprint shapefile
+# building_footprint = "path/to/building_footprint.shp"  # If user is working with user defined building footprint shapefile
 
 
 # If user is working with user defined shapefile
-#AOI = "path/to/your/boundary"  # This shapefile should be in projected CRS, if not, it will be reprojected to the target CRS
+# AOI = "path/to/your/boundary"  # This shapefile should be in projected CRS, if not, it will be reprojected to the target CRS
 
 # Three methods are available to evaluate the FIM,
 # 1. Smallest extent
@@ -40,7 +38,8 @@ and appropritate decidede benchmark FIM file as a value(got from the query).
 
 If some cases already have benchmark; do not need to add them here.
 """
-#benchmark_dict = {"HUC11110203_AR": "AI_0_4m_20160103_923809W350109N_BM.tif"}
+# benchmark_dict = {"HUC11110203_AR": "AI_0_4m_20160103_923809W350109N_BM.tif"}
+
 
 def test_evaluation_framework():
     # Run the evaluation [Few possible cases documentations are given below]
@@ -51,14 +50,14 @@ def test_evaluation_framework():
     # fe.EvaluateFIM(Main_dir, method_name, output_dir)
 
     # If the FIMS are not in projected crs or are in different spatial resolution
-    #fe.EvaluateFIM(
-        #Main_dir,
-        #method_name,
-        #output_dir,
-        #target_crs=target_crs,
-        #shapefile_dir=AOI,
-        #target_resolution=target_resolution,
-    #)
+    # fe.EvaluateFIM(
+    # Main_dir,
+    # method_name,
+    # output_dir,
+    # target_crs=target_crs,
+    # shapefile_dir=AOI,
+    # target_resolution=target_resolution,
+    # )
     # fe.EvaluateFIM(
     #     Main_dir,
     #     method,
@@ -75,14 +74,14 @@ def test_evaluation_framework():
     """
     # fe.EvaluateFIM(Main_dir, benchmark_dict=benchmark_dict)
 
-    #For the bootstrap evaluation
+    # For the bootstrap evaluation
     fe.EvaluateFIM(
         Main_dir,
         method,
         output_dir,
         target_crs=target_crs,
         target_resolution=target_resolution,
-        sub_method="stratified",
+        sub_method="random",
         n_iterations=100,
         n_points=500,
         seed=42,
@@ -99,12 +98,10 @@ def test_evaluation_framework():
 
     # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset retrieved using ArcGIS REST API)
     # It will use the evaluation boundary to retrieve the building footprints
-    #fe.EvaluationWithBuildingFootprint(
-       # Main_dir, method_name, output_dir, shapefile_dir=AOI
-    #)
-    fe.EvaluationWithBuildingFootprint(
-        Main_dir, method, output_dir
-    )
+    # fe.EvaluationWithBuildingFootprint(
+    # Main_dir, method_name, output_dir, shapefile_dir=AOI
+    # )
+    fe.EvaluationWithBuildingFootprint(Main_dir, method, output_dir)
 
     # If user have their own building footprint dataset, they can use it as well
     # fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint=building_footprint)

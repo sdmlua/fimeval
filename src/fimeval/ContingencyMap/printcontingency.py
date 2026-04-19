@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 
 
 def getContingencyMap(raster_path, method_path):
+    plt.rcParams["font.family"] = "Arial"
+
     # Load the raster
     with rasterio.open(raster_path) as src:
         band1 = src.read(1)
@@ -78,9 +80,11 @@ def getContingencyMap(raster_path, method_path):
     ]
 
     # Add legend and labels
-    plt.legend(handles=legend_patches, loc="lower left")
-    plt.xlabel("Longitude", fontsize=14, fontweight="bold")
-    plt.ylabel("Latitude", fontsize=14, fontweight="bold")
+    plt.legend(
+        handles=legend_patches, loc="lower left", prop={"family": "Arial", "size": 13}
+    )
+    plt.xlabel("Longitude", fontsize=16, fontname="Arial")
+    plt.ylabel("Latitude", fontsize=16, fontname="Arial")
     plt.tick_params(axis="both", labelsize=14, width=1.5)
 
     # Adjust tick formatting
@@ -88,10 +92,15 @@ def getContingencyMap(raster_path, method_path):
     y_ticks = np.linspace(ys_dd.min(), ys_dd.max(), 5)
     plt.xticks(x_ticks, [f"{abs(tick):.2f}" for tick in x_ticks])
     plt.yticks(y_ticks, [f"{abs(tick):.2f}" for tick in y_ticks])
-    plt.legend(handles=legend_patches, loc="lower left")
-    plt.xlabel("Longitude", fontsize=14, fontweight="bold")
-    plt.ylabel("Latitude", fontsize=14, fontweight="bold")
+    plt.legend(
+        handles=legend_patches, loc="lower left", prop={"family": "Arial", "size": 13}
+    )
+    plt.xlabel("Longitude", fontsize=16, fontname="Arial")
+    plt.ylabel("Latitude", fontsize=16, fontname="Arial")
     plt.tick_params(axis="both", which="both", labelsize="14", width=1.5)
+    ax = plt.gca()
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontname("Arial")
 
     # Save the plot in the same directory as the raster with 500 DPI
     plot_dir = os.path.join(method_path, "FinalPlots")

@@ -1,4 +1,3 @@
-
 from .methods import (
     bootstrap_random_sampling,
     bootstrap_systematic_sampling,
@@ -13,7 +12,7 @@ def run_bootstrap(
     sub_method="random",
     n_iterations=100,
     n_points=500,
-    benchmark_path= None,
+    benchmark_path=None,
     spacing_range=None,
     seed=None,
     save_points=False,
@@ -49,7 +48,7 @@ def run_bootstrap(
     plot_metrics : bool, default=False
         Whether to plot bootstrap metric distributions.
     """
-    
+
     sub_method = sub_method.lower()
 
     if sub_method == "random":
@@ -69,7 +68,7 @@ def run_bootstrap(
     elif sub_method == "systematic":
         if spacing_range is None:
             raise ValueError(
-            "spacing_range=(min, max) is required for systematic sampling."
+                "spacing_range=(min, max) is required for systematic sampling."
             )
         return bootstrap_systematic_sampling(
             contingency_raster_path=contingency_raster_path,

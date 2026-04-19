@@ -27,28 +27,39 @@ To address these issues, we developed Flood Inundation Mapping Prediction Evalua
 The architecture of the ```fimeval``` integrates different modules to which helps the automation of flood evaluation. All those modules codes are in source (```src``` ) folder.
 ```bash
 fimeval/     
-├── docs/                       # Documentation (contains 'FIMserv' Tool usage sample codes)
-│   └── sampledata/              # Contains the sample data to demonstrate how this frameworks works    
-│   └── fimeval_usage.ipynb            #Sample code usage of the Evaluation framework
-│   └── fimbench_usage.ipynb           #Sample code usage of the FIMbench Query and getting benchmark dataset
-├── Images/                       # have sample images for documentation       
+├── docs/                        # Documentation notebooks and sample data
+│   ├── sampledata/              # Sample rasters used to demonstrate the framework
+│   ├── fimeval_usage.ipynb      # Example workflow for the evaluation framework
+│   └── fimbench_usage.ipynb     # Example workflow for querying benchmark FIM data
+├── Images/                      # Images used in the documentation
+├── tests/                       # Test cases for framework functionality
+│   ├── test_accessbenchmarkFIM.py
+│   └── test_evaluationfim.py
 ├── src/
 │   └── fimeval/    
-│       ├──BenchFIMQuery/   #Module to interact with the extensive FIMdatabase, hosted in AWS S3
-│       │   └── access_benchfim.py   #Different classes to query right benchmark FIM for any given location and set of filter
-│       │   └── utilis.py   #Support utility      
-│       ├──BuildingFootprint/ # Contains the evaluation of model predicted FIM with microsoft building footprint
-│       │   └── arcgis_API.py   #seamless integration of building footprint in evaluation through ArcGIS REST API
-│       │   └── evaluationwithBF.py       
-│       └── ContingencyMap/      # Contains all the metrics calculation and contingency map generation
-│       │   ├── evaluationFIM.py # main evaluation moodule 
-│       │   └── methods.py  # Contains 3 different methods of evaluation 
-│       │   └── metrics.py  # metrics calculation module
-│       │   └── plotevaluationmetrics.py  # use to vizualize the different performance metrics
-│       │   └── printcontingency.py  # prints the contingency map to quickly generate the Map layout
-│       │   └── water_bodies.py  # module which to get permanent water bodies from s3 bucket and ArcGIS REST API
-│       └── utilis.py   #Includes the resampling and reprojection of FIMs
-└── tests/                  # Includes test cases for different functionality
+│       ├── BenchFIMQuery/               # Query benchmark FIM datasets from the catalog
+│       │   ├── access_benchfim.py
+│       │   └── utilis.py
+│       ├── bootstrap/                   # Bootstrap-based evaluation utilities and sampling methods
+│       │   ├── methods.py
+│       │   ├── run_bootstrap.py
+│       │   └── utils.py
+│       ├── BuildingFootprint/           # Building-footprint-based evaluation modules
+│       │   ├── arcgis_API.py
+│       │   └── evaluationwithBF.py
+│       ├── ContingencyMap/              # Core raster evaluation, metrics, and plotting modules
+│       │   ├── evaluationFIM.py
+│       │   ├── methods.py
+│       │   ├── metrics.py
+│       │   ├── plotevaluationmetrics.py
+│       │   ├── printcontingency.py
+│       │   └── water_bodies.py
+│       ├── __init__.py
+│       ├── setup_benchFIM.py
+│       └── utilis.py                    # Utilities for reprojection and resampling
+├── LICENSE.txt
+├── pyproject.toml
+└── uv.lock
 ```
 The graphical representation of fimeval pipeline can be summarized as follows in **```Figure 1```**. Here, it will show all the steps incorporated within the ```fimeval``` during packaging and all functionality are interconnected to each other, resulting the automation of the framework.
 
@@ -137,10 +148,10 @@ The complete description of different modules, what they are meant for, argument
 Table 1: Modules in `fimeval` are in order of execution.
 | Module Name | Objective | Arguments | Outputs |
 |------------|-----------|-----------|-----------|
-| `EvaluateFIM` | It runs all the evaluation of FIM between B-FIM and M-FIMs. | `main_dir`: Main directory containing the case study folders, <br> `method_name`: How users wants to evaluate their FIM, <br> `outpur_dir`: Output directory where all the results and the intermidiate files will be saved for further calculation, <br>  *`PWB_dir`*: The permanenet water bodies vectory file directory if user wants to user their own boundary, <br> *`target_crs`*: this fimeval framework needs the floodmaps to be in projected CRS so define the projected CRS in epsg code format, <br> *`target_resolution`*: sometime if the benchmark is very high resolution than candidate FIMs, it needs heavy computational time, so user can define the resolution if there FIMs are in different spatial resolution, else it will use the coarser resolution among all FIMS within that case. |The outputs includes generated files in TIFF, SHP, CSV, and PNG formats, all stored within the output folder. Users can visualize the TIFF files using any geospatial platform. The TIFF files consist of the binary Benchmark-FIM (Benchmark.tif), Model-FIM (Candidate.tif), and Agreement-FIM (Contingency.tif). The shp files contain the boundary of the generated flood extent.|
-| `PlotContingencyMap` | For better understanding, It will print the agreement maps derived in first step. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding contingency raster for printing.| This prints the contingency map showing different class of evaluation (TP, FP, no data, PWB etc). The outputs look like- Figure 4 first row.|
-| `PlotEvaluationMetrics` | For quick understanding of the evaluation metrics, to plot bar of evaluation scores. | `main_dir`, `method_name`, `output_dir` : Based on the those arguments, once all the evaluation is done, it will dynamically get the corresponding file for printing based on all those info.| This prints the bar plots which includes different performance metrics calculated by EvaluateFIM module. The outputs look like- Figure 4 second row.|
-| `EvaluationWithBuildingFootprint` | For Building Footprint Analysis, user can specify shapefile of building footprints as .shp or .gpkg format. By default it consider global Microsoft building footprint dataset hosted in ArcGIS Online. It is seamlessly integrated within framework through ArcGIS REST API. | `main_dir`, `method_name`, `output_dir`: Those arguments are as it is, same as all other modules. <br> *`building_footprint`*: If user wants to use their own building footprint file then pass the directory here, *`shapefile_dir`*: this is the directory of user defined AOI if user is working with their own boundary and automatic Building footprint download and evaluation,| It will calculate the different metrics (e.g. TP, FP, CSI, F1, Accuracy etc) based on hit and miss of building on different M-FIM and B-FIM. Those all metrics will be saved as CSV format in `output_dir` and finally using that info it prints the counts of building foorpint in each FIMs as well as scenario on the evaluation end via bar plot.|
+| `EvaluateFIM` | Runs the core raster-based evaluation between the benchmark FIM (B-FIM) and one or more model FIMs (M-FIMs). | `main_dir`: Main directory containing one or more case-study folders.<br>`method_name`: Evaluation extent method (`smallest_extent`, `convex_hull`, `AOI`, `intersected_extent`, or `bootstrap`).<br>`output_dir`: Output directory where results and intermediate files are saved.<br>*`PWB_dir`*: Optional permanent water bodies vector file supplied by the user.<br>*`shapefile_dir`*: Optional AOI boundary file for `AOI`-based evaluation.<br>*`target_crs`*: Target projected CRS in EPSG format.<br>*`target_resolution`*: Target raster resolution for harmonizing benchmark and candidate rasters.<br>*`sub_method`*: Bootstrap sampling method (`random`, `systematic`, or `stratified`) when `method_name="bootstrap"`.<br>*`n_iterations`*, *`n_points`*, *`spacing_range`*, *`seed`*, *`save_points`*, *`save_every`*, *`plot_metrics`*: Optional bootstrap controls. | Saves evaluation outputs in the case-study output folder, including `BoundaryforEvaluation/`, `MaskedFIMwithBoundary/`, `ContingencyMaps/`, and `EvaluationMetrics/`. For bootstrap runs, additional outputs are written under `Random_Sampling/`, `Systematic_Sampling/`, or `Stratified_Sampling/`, with sampled-point shapefiles organized under `Sampled_Points/iter_###/`. |
+| `PrintContingencyMap` | Prints the contingency maps created by `EvaluateFIM` for quick visual inspection. | `main_dir`, `method_name`, `output_dir`: Used to dynamically locate the contingency rasters produced during evaluation. | Saves a styled PNG version of each contingency raster showing evaluation classes such as true positive, false positive, false negative, true negative, no data, and permanent water bodies. The outputs look like Figure 4 first row. |
+| `PlotEvaluationMetrics` | Plots bar charts of the evaluation metrics produced by `EvaluateFIM`. | `main_dir`, `method_name`, `output_dir`: Used to dynamically locate the `EvaluationMetrics.csv` file generated for each case study. | Saves bar plots of the main performance metrics calculated during evaluation. The outputs look like Figure 4 second row. |
+| `EvaluationWithBuildingFootprint` | Evaluates benchmark and model FIM agreement at building locations. By default it uses the Microsoft Building Footprint dataset through the ArcGIS REST API, but users can also provide their own building-footprint file. | `main_dir`, `method_name`, `output_dir`: Same core inputs used by the other modules.<br>*`building_footprint`*: Optional user-supplied building footprint in `.shp` or `.gpkg` format.<br>*`shapefile_dir`*: Optional AOI boundary when using a user-defined evaluation area. | Calculates building-based agreement metrics (for example TP, FP, CSI, F1, and Accuracy), saves the results as CSV files in `output_dir`, and generates plots summarizing inundated-building counts across benchmark and model FIMs. |
 
 <p align="center">
   <img src="./Images/methodsresults_combined.jpg" width="750" />
@@ -228,4 +239,3 @@ Contact <a href="https://geography.ua.edu/people/sagy-cohen/" target="_blank">Sa
  (sagy.cohen@ua.edu)
  Supath Dhital, (sdhital@crimson.ua.edu)
  Dipsikha Devi, (ddevi@ua.edu)
-
