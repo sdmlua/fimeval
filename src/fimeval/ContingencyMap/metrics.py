@@ -1,9 +1,10 @@
 import numpy as np
+import math
 
 
 # Get all the evaluation metrics
-def evaluationmetrics(out_image1, out_image2):
-    merged = out_image1 + out_image2
+def evaluationmetrics(merged):
+    # merged = out_image1 + out_image2
     unique_values, counts = np.unique(merged, return_counts=True)
     class_pixel_counts = dict(zip(unique_values, counts))
     class_pixel_counts
@@ -22,6 +23,20 @@ def evaluationmetrics(out_image1, out_image2):
     POD = TP / (TP + FN + epsilon)
     FPR = FP / (FP + TN + epsilon)
     FAR = FP / (TP + FP + epsilon)
+    N = TP + FP + FN + TN
+    a = float(TP + FP)
+    b = float(TP + FN)
+    c = float(TN + FP)
+    d = float(TN + FN)
+
+    den_term = a * b * c * d
+    den = math.sqrt(den_term) if den_term > 0 else 0.0
+    mcc = ((TP * TN) - (FP * FN)) / den if den > 0 else 0.0
+    po = Acc
+    pe = (
+        ((((TP + FP) * (TP + FN)) + ((FN + TN) * (FP + TN))) / (N**2)) if N > 0 else 0.0
+    )
+    kappa = (po - pe) / (1 - pe) if (1 - pe) != 0 else 0.0
 
     return (
         unique_values,
@@ -38,6 +53,8 @@ def evaluationmetrics(out_image1, out_image2):
         F1_score,
         POD,
         FPR,
+        mcc,
+        kappa,
         merged,
         FAR,
     )

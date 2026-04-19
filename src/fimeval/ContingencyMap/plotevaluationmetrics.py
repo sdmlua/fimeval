@@ -13,7 +13,15 @@ def PlotMetrics(csv_path, method_path):
     # Keep only the desired metrics
     metrics = metrics_df.loc[
         metrics_df["Metrics"].isin(
-            ["CSI_values", "POD_values", "Acc_values", "Prec_values", "F1_values"]
+            [
+                "CSI_values",
+                "POD_values",
+                "Acc_values",
+                "Prec_values",
+                "F1_values",
+                "MCC_values",
+                "kappa_values",
+            ]
         )
     ].copy()
 
@@ -25,6 +33,8 @@ def PlotMetrics(csv_path, method_path):
             "Acc_values": "Accuracy",
             "Prec_values": "Precision",
             "F1_values": "F1 Score",
+            "MCC_values": "MCC",
+            "kappa_values": "Kappa",
         }
     )
 
@@ -118,7 +128,7 @@ def PlotEvaluationMetrics(main_dir, method_name, out_dir):
         method_path = os.path.join(out_dir, os.path.basename(main_dir), method_name)
         Evaluation_Metrics = os.path.join(method_path, "EvaluationMetrics")
         csv_files = os.path.join(Evaluation_Metrics, "EvaluationMetrics.csv")
-        if not csv_files:
+        if not os.path.exists(csv_files):
             print(f"No EvaluationMetrics CSV files found in '{Evaluation_Metrics}'.")
         else:
             PlotMetrics(csv_files, method_path)
@@ -131,7 +141,7 @@ def PlotEvaluationMetrics(main_dir, method_name, out_dir):
                 method_path = os.path.join(folder_path, method_name)
                 Evaluation_Metrics = os.path.join(method_path, "EvaluationMetrics")
                 csv_files = os.path.join(Evaluation_Metrics, "EvaluationMetrics.csv")
-                if not csv_files:
+                if not os.path.exists(csv_files):
                     print(
                         f"No EvaluationMetrics CSV files found in '{Evaluation_Metrics}'."
                     )
