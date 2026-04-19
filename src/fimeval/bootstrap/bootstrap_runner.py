@@ -1,4 +1,3 @@
-
 from .methods import (
     bootstrap_random_sampling,
     bootstrap_systematic_sampling,
@@ -20,7 +19,6 @@ def run_bootstrap(
     output_folder=None,
     plot_metrics=False,
 ):
-    
 
     method = method.lower()
 
@@ -42,7 +40,7 @@ def run_bootstrap(
     elif method == "systematic":
         if spacing_range is None:
             raise ValueError(
-            "spacing_range=(min, max) is required for systematic sampling."
+                "spacing_range=(min, max) is required for systematic sampling."
             )
         return bootstrap_systematic_sampling(
             benchmark_path=benchmark_path,

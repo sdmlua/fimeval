@@ -2,17 +2,16 @@ import fimeval as fe
 from pathlib import Path
 import os
 
-Main_dir = (
-    "/Users/ddevi/Documents/Test_FIMeval/HUC"
-)
+Main_dir = "/Users/ddevi/Documents/Test_FIMeval/HUC"
 
 PWD_dir = "./path/to/PWB"
 output_dir = (
     # "./path/to/output"  # This is the output directory where the results will be saved
-#)
-output_dir = (
-     "/Users/ddevi/Documents/Test_FIMeval/HUC"  # This is the output directory where the results will be saved
 )
+# output_dir = (
+#     "/Users/ddevi/Documents/Test_FIMeval/HUC"  # This is the output directory where the results will be saved
+# )
+output_dir = "/Users/ddevi/Documents/Test_FIMeval/HUC"  # This is the output directory where the results will be saved
 target_crs = "EPSG:5070"  # Target CRS for reprojecting the FIMs, need to be in EPSG code of Projected CRS
 target_resolution = 10  # This will be in meters, if it passes the FIMS will be resampled to this resolution else, it will find the coarser resolution among all FIMS for this case and use that to resample!
 
@@ -110,8 +109,8 @@ def test_evaluation_framework():
 
     # If user have their own building footprint dataset, they can use it as well
     # fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint=building_footprint)
-   
-   #Evaluation using Bootstrap (Random)
+
+    # Evaluation using Bootstrap (Random)
     case_dir = Path(Main_dir)
 
     benchmark_path = str(next(case_dir.glob("*BM*.tif")))
@@ -125,17 +124,14 @@ def test_evaluation_framework():
         case_dir.name,
         method,
         "ContingencyMaps",
-        f"ContingencyMAP_{candidate_name}.tif"
+        f"ContingencyMAP_{candidate_name}.tif",
     )
 
-    bootstrap_output = os.path.join(
-        output_dir,
-        case_dir.name,
-        method
-    )
+    bootstrap_output = os.path.join(output_dir, case_dir.name, method)
 
-    assert os.path.exists(confusion_raster_path), \
-        f"Confusion raster not found: {confusion_raster_path}"
+    assert os.path.exists(
+        confusion_raster_path
+    ), f"Confusion raster not found: {confusion_raster_path}"
 
     # -----------------------------
     # Step 3: Run bootstrap
@@ -181,7 +177,7 @@ def test_evaluation_framework():
         n_iterations=100,
         n_points=500,
         seed=42,
-        #spacing_range=(100,1000),
+        # spacing_range=(100,1000),
         spacing_range=None,
         save_points=True,
         save_every=10,
