@@ -158,6 +158,11 @@ def evaluateFIM(
     else:
         bounding_geom = method(smallest_raster_path, save_dir=save_dir)
 
+    if method.__name__== "intersected_extent":
+        bounding_geom = method(benchmark_path, *candidate_paths,save_dir=save_dir)
+    else:
+        bounding_geom= method(smallest_raster_path,save_dir=save_dir)
+
     # Read and process benchmark raster
     with rasterio.open(benchmark_path) as src1:
         out_image1, out_transform1 = mask(
@@ -353,8 +358,11 @@ def evaluateFIM(
                 FPR,
                 mcc,
                 kappa,
+                mcc,
+                kappa,
                 merged,
                 FAR,
+            ) = evaluationmetrics(merged)
             ) = evaluationmetrics(merged)
 
             # Append values to the lists
@@ -371,6 +379,8 @@ def evaluateFIM(
             F1_values.append(F1_score)
             POD_values.append(POD)
             FPR_values.append(FPR)
+            MCC_values.append(mcc)
+            kappa_values.append(kappa)
             MCC_values.append(mcc)
             kappa_values.append(kappa)
             Merged.append(merged)

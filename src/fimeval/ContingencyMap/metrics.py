@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import math
 
 
 # Get all the evaluation metrics
@@ -53,6 +54,8 @@ def evaluationmetrics(merged):
         F1_score,
         POD,
         FPR,
+        mcc,
+        kappa,
         mcc,
         kappa,
         merged,

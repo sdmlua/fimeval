@@ -3,12 +3,15 @@ from pathlib import Path
 import os
 
 Main_dir = (
-    # "../docs/sampledata"
+    "/Users/ddevi/Documents/Test_FIMeval/HUC"
 )
 
 PWD_dir = "./path/to/PWB"
 output_dir = (
     # "./path/to/output"  # This is the output directory where the results will be saved
+#)
+output_dir = (
+     "/Users/ddevi/Documents/Test_FIMeval/HUC"  # This is the output directory where the results will be saved
 )
 target_crs = "EPSG:5070"  # Target CRS for reprojecting the FIMs, need to be in EPSG code of Projected CRS
 target_resolution = 10  # This will be in meters, if it passes the FIMS will be resampled to this resolution else, it will find the coarser resolution among all FIMS for this case and use that to resample!
@@ -92,8 +95,10 @@ def test_evaluation_framework():
 
     # Once the FIM evaluation is done, print the contingency map
     fe.PrintContingencyMap(Main_dir, method, output_dir)
+    fe.PrintContingencyMap(Main_dir, method, output_dir)
 
     # Plot the evaluation metrics after the FIM evaluation
+    fe.PlotEvaluationMetrics(Main_dir, method, output_dir)
     fe.PlotEvaluationMetrics(Main_dir, method, output_dir)
 
     # FIM Evaluation with Building Footprint (by default, it uses the Microsoft Building Footprint dataset retrieved using ArcGIS REST API)
@@ -105,3 +110,83 @@ def test_evaluation_framework():
 
     # If user have their own building footprint dataset, they can use it as well
     # fe.EvaluationWithBuildingFootprint(Main_dir, method_name, output_dir, building_footprint=building_footprint)
+   
+   #Evaluation using Bootstrap (Random)
+    case_dir = Path(Main_dir)
+
+    benchmark_path = str(next(case_dir.glob("*BM*.tif")))
+    candidate_paths = [str(p) for p in case_dir.glob("*.tif") if "BM" not in p.name]
+
+    candidate_path = candidate_paths[0]
+    candidate_name = Path(candidate_path).stem
+
+    confusion_raster_path = os.path.join(
+        output_dir,
+        case_dir.name,
+        method,
+        "ContingencyMaps",
+        f"ContingencyMAP_{candidate_name}.tif"
+    )
+
+    bootstrap_output = os.path.join(
+        output_dir,
+        case_dir.name,
+        method
+    )
+
+    assert os.path.exists(confusion_raster_path), \
+        f"Confusion raster not found: {confusion_raster_path}"
+
+    # -----------------------------
+    # Step 3: Run bootstrap
+    # -----------------------------
+    """
+    Run bootstrap-based sampling for flood map evaluation.
+
+    Parameters
+    ----------
+    benchmark_path : Path to benchmark raster.
+    candidate_paths :  List of candidate raster paths.
+    confusion_raster_path :  Path to confusion raster.
+    method : str, default="random"
+        Sampling method: "random", "systematic", or "stratified".
+    n_iterations : int, default=100
+        Number of bootstrap iterations.
+    n_points : int, default=500
+        Number of sample points per iteration.
+    spacing_range : float, optional (only for sytematic. For other methods it should be 'None'. )
+        Grid spacing range for systematic sampling.
+        For eg.(100,1000).The grid space will randomly change in between 100 and 1000 with each iteration.
+    seed : int, optional
+        Random seed.
+    save_points : bool, default=False
+        Whether to save sampled points.
+    save_every : int, default=1
+        Save points every N iterations.
+    output_folder : str, optional
+        Output directory.
+    plot_metrics : bool, default=False
+        Whether to plot bootstrap metric distributions.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame of bootstrap evaluation metrics.
+    """
+    results_df = fe.run_bootstrap(
+        benchmark_path=benchmark_path,
+        candidate_paths=[candidate_path],
+        confusion_raster_path=confusion_raster_path,
+        method="stratified",
+        n_iterations=100,
+        n_points=500,
+        seed=42,
+        #spacing_range=(100,1000),
+        spacing_range=None,
+        save_points=True,
+        save_every=10,
+        output_folder=bootstrap_output,
+        plot_metrics=True,
+    )
+
+    assert not results_df.empty
