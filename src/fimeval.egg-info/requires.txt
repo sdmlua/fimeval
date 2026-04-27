@@ -1,0 +1,17 @@
+rasterio<2.0.0,>=1.4.2
+numpy>=2
+geopandas<2.0.0,>=1.0.1
+shapely<3.0.0,>=2.0.6
+matplotlib<4.0.0,>=3.9.2
+plotly<6.0.0,>=5.24.1
+kaleido==0.2.1
+nbformat<6.0.0,>=5.10.4
+pyproj<4.0.0,>=3.7.0
+notebook<8.0.0,>=7.3.2
+boto3>=1.40.0
+geemap
+seaborn
+
+[dev]
+pytest
+black

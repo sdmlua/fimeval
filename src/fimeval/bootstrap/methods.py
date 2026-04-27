@@ -127,7 +127,7 @@ def bootstrap_random_sampling(
     if plot_metrics:
         plot_metric_boxplots(
             results_df,
-            metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa"),
+            metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa", "Accuracy"),
             sampling_type="Random Sampling",
             output_folder=sampling_dir,
             filename=f"{output_stem}.png",
@@ -283,7 +283,7 @@ def bootstrap_systematic_sampling(
     if plot_metrics:
         plot_metric_boxplots(
             results_df,
-            metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa"),
+            metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa","Accuracy"),
             sampling_type="Systematic Sampling",
             output_folder=sampling_dir,
             filename=f"{output_stem}.png",
@@ -496,7 +496,7 @@ def bootstrap_stratified_sampling(
     if plot_metrics:
         plot_metric_boxplots(
             results_df,
-            metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa"),
+            metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa" ,"Accuracy"),
             sampling_type="Stratified Sampling",
             output_folder=sampling_dir,
             filename=f"{output_stem}.png",

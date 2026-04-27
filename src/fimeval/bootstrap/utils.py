@@ -119,7 +119,7 @@ def compute_metrics(sampled_vals):
 
 def plot_metric_boxplots(
     df,
-    metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa"),
+    metrics=("CSI", "FAR", "F1", "POD", "MCC", "Kappa", "Accuracy"),
     sampling_type=None,
     output_folder=None,
     filename=None,
@@ -130,7 +130,7 @@ def plot_metric_boxplots(
     Create boxplots for selected metrics across bootstrap iterations.
     """
     plt.rcParams["font.family"] = "Arial"
-    fig, ax = plt.subplots(figsize=(5, 3))
+    fig, ax = plt.subplots(figsize=(6, 3))
     metrics = list(metrics)
 
     df[metrics].boxplot(

@@ -11,19 +11,47 @@ from shapely.ops import unary_union
 
 # Smallest raster extent
 def get_smallest_raster_path(benchmark_path, *candidate_paths):
-    def get_raster_shape(raster_path):
+    def get_valid_area(raster_path):
         with rasterio.open(raster_path) as src:
-            return src.shape
+            arr = src.read(1)
+            nodata = src.nodata
+            pixel_area = abs(src.transform.a * src.transform.e)    # Get pixel area in map units (e.g. metres²)
+            if nodata is None:
+                non_nodata_mask = np.ones(arr.shape, dtype=bool)
+            else:
+                if np.issubdtype(arr.dtype, np.floating) and np.isnan(nodata):
+                    non_nodata_mask = ~np.isnan(arr)
+                else:
+                    non_nodata_mask = arr != nodata
+
+            valid_values = arr[non_nodata_mask]
+            has_zero = np.any(valid_values == 0)
+            has_positive = np.any(valid_values > 0)
+
+            # Category 1: positive + nodata only → full raster is valid extent
+            if has_positive and not has_zero:
+                valid_mask = np.ones(arr.shape, dtype=bool)
+
+            # Category 2: zero + positive → exclude nodata pixels
+            elif has_positive and has_zero:
+                valid_mask = (arr >= 0) & non_nodata_mask
+
+            else:
+                valid_mask = non_nodata_mask
+
+            valid_pixel_count = np.sum(valid_mask)
+            valid_area = valid_pixel_count * pixel_area
+
+            return valid_area if valid_pixel_count > 0 else float('inf')
 
     all_paths = [benchmark_path] + list(candidate_paths)
     smallest_raster = None
-    smallest_size = float("inf")
+    smallest_area = float('inf')
 
     for raster_path in all_paths:
-        shape = get_raster_shape(raster_path)
-        size = shape[0] * shape[1]
-        if size < smallest_size:
-            smallest_size = size
+        area = get_valid_area(raster_path)
+        if area < smallest_area:
+            smallest_area = area
             smallest_raster = raster_path
     return smallest_raster
 
@@ -31,10 +59,43 @@ def get_smallest_raster_path(benchmark_path, *candidate_paths):
 # Method 1: Smallest extent
 def smallest_extent(raster_path, save_dir):
     with rasterio.open(raster_path) as src:
-        bounds = src.bounds
-        crs = src.crs.to_string()
-    bounding_geom = box(bounds.left, bounds.bottom, bounds.right, bounds.top)
+        arr = src.read(1)
+        nodata = src.nodata
 
+        if nodata is None:
+            non_nodata_mask = np.ones(arr.shape, dtype=bool)
+        else:
+            if np.isnan(nodata):
+                non_nodata_mask = ~np.isnan(arr)
+            else:
+                non_nodata_mask = arr != nodata
+
+        valid_values = arr[non_nodata_mask]
+
+        has_zero = np.any(valid_values == 0)
+        has_positive = np.any(valid_values > 0)
+
+        # Case 1: positive + nodata only → use full raster extent
+        if has_positive and not has_zero:
+            valid_mask = np.ones(arr.shape, dtype=bool)
+
+        # Case 2: nodata + 0 + positive → use only non-nodata pixels
+        elif has_positive and has_zero:
+            valid_mask = non_nodata_mask
+
+        else:
+            valid_mask = non_nodata_mask
+
+        if not np.any(valid_mask):
+            raise ValueError(f"No valid pixels found in raster: {raster_path}")
+
+        geom_list = []
+        for geom, value in shapes(valid_mask.astype(np.uint8), mask=valid_mask, transform=src.transform):
+            if value == 1:
+                geom_list.append(shape(geom))
+
+        bounding_geom = unary_union(geom_list)
+        crs = src.crs.to_string()
     # Save the smallest extent boundary
     Bound_SHP = os.path.join(save_dir, "BoundaryforEvaluation")
     if not os.path.exists(Bound_SHP):
@@ -102,14 +163,38 @@ Calculates the intersection of valid data footprints across the benchmark and ca
 
 def get_valid_footprint(raster_path):
     with rasterio.open(raster_path) as src:
-        arr = src.read(1, masked=True)
-        arr = arr.astype("float32").filled(np.nan)
-        valid_mask = ~np.isnan(arr)
+        arr = src.read(1)
+        nodata = src.nodata
+
+        # Build non-nodata mask
+        if nodata is None:
+            non_nodata_mask = np.ones(arr.shape, dtype=bool)
+        else:
+            if np.isnan(nodata):
+                non_nodata_mask = ~np.isnan(arr)
+            else:
+                non_nodata_mask = arr != nodata
+
+        valid_values = arr[non_nodata_mask]
+        has_zero = np.any(valid_values == 0)
+        has_positive = np.any(valid_values > 0)
+
+        # Case 1: positive + nodata only → full raster extent
+        if has_positive and not has_zero:
+            valid_mask = np.ones(arr.shape, dtype=bool)
+        # Case 2: zero + positive (+ maybe nodata) → exclude nodata only
+        elif has_positive and has_zero:
+            valid_mask = non_nodata_mask
+        else:
+            valid_mask = non_nodata_mask
+
+        if not np.any(valid_mask):
+            return None, src.crs
 
         geoms = []
-        for geom, val in shapes(
-            valid_mask.astype("uint8"), mask=valid_mask, transform=src.transform
-        ):
+        for geom, val in shapes(valid_mask.astype("uint8"),
+                                 mask=valid_mask,
+                                 transform=src.transform):
             if val > 0:
                 geoms.append(shape(geom))
 
@@ -117,7 +202,6 @@ def get_valid_footprint(raster_path):
             return None, src.crs
 
         unified_geom = unary_union(geoms)
-
         if not unified_geom.is_valid:
             unified_geom = unified_geom.buffer(0)
 
