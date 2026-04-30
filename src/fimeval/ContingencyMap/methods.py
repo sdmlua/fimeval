@@ -15,7 +15,9 @@ def get_smallest_raster_path(benchmark_path, *candidate_paths):
         with rasterio.open(raster_path) as src:
             arr = src.read(1)
             nodata = src.nodata
-            pixel_area = abs(src.transform.a * src.transform.e)    # Get pixel area in map units (e.g. metres²)
+            pixel_area = abs(
+                src.transform.a * src.transform.e
+            )  # Get pixel area in map units (e.g. metres²)
             if nodata is None:
                 non_nodata_mask = np.ones(arr.shape, dtype=bool)
             else:
@@ -42,11 +44,11 @@ def get_smallest_raster_path(benchmark_path, *candidate_paths):
             valid_pixel_count = np.sum(valid_mask)
             valid_area = valid_pixel_count * pixel_area
 
-            return valid_area if valid_pixel_count > 0 else float('inf')
+            return valid_area if valid_pixel_count > 0 else float("inf")
 
     all_paths = [benchmark_path] + list(candidate_paths)
     smallest_raster = None
-    smallest_area = float('inf')
+    smallest_area = float("inf")
 
     for raster_path in all_paths:
         area = get_valid_area(raster_path)
@@ -90,7 +92,9 @@ def smallest_extent(raster_path, save_dir):
             raise ValueError(f"No valid pixels found in raster: {raster_path}")
 
         geom_list = []
-        for geom, value in shapes(valid_mask.astype(np.uint8), mask=valid_mask, transform=src.transform):
+        for geom, value in shapes(
+            valid_mask.astype(np.uint8), mask=valid_mask, transform=src.transform
+        ):
             if value == 1:
                 geom_list.append(shape(geom))
 
@@ -192,9 +196,9 @@ def get_valid_footprint(raster_path):
             return None, src.crs
 
         geoms = []
-        for geom, val in shapes(valid_mask.astype("uint8"),
-                                 mask=valid_mask,
-                                 transform=src.transform):
+        for geom, val in shapes(
+            valid_mask.astype("uint8"), mask=valid_mask, transform=src.transform
+        ):
             if val > 0:
                 geoms.append(shape(geom))
 

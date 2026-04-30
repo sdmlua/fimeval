@@ -1,6 +1,6 @@
 """
 Author: Supath Dhital
-Date Updated: January 2026
+Date Updated: April 2026
 """
 
 import os
@@ -119,7 +119,7 @@ def evaluateFIM(
     Merged = []
     Unique = []
     FAR_values = []
-    Wet_to_Dry_ratio = [] 
+    Wet_to_Dry_ratio = []
 
     # Dynamically call the specified method
     requested_method = method
@@ -136,7 +136,7 @@ def evaluateFIM(
 
     # If method is AOI, and direct shapefile directory is not provided, then it will search for the shapefile in the folder
     if method.__name__ == "AOI":
-        # Ubest-matching boundary file, prefer .gpkg from benchFIM downloads
+        # matching boundary file, prefer .gpkg from benchFIM downloads
         if shapefile is None:
             shapefile_path = find_best_boundary(Path(folder), Path(benchmark_path))
             if shapefile_path is None:
@@ -159,38 +159,27 @@ def evaluateFIM(
     else:
         bounding_geom = method(smallest_raster_path, save_dir=save_dir)
 
-    #if method.__name__ == "intersected_extent":
-        #bounding_geom = method(benchmark_path, *candidate_paths, save_dir=save_dir)
-    #else:
-        #bounding_geom = method(smallest_raster_path, save_dir=save_dir)
-
-    # -------------------------------------------------------------------------
-    # Step 1 – Read and process the BENCHMARK raster
-    # -------------------------------------------------------------------------
-
-    # 1a. Read the raw benchmark raster
+    # Read the raw benchmark raster
     with rasterio.open(benchmark_path) as src1:
         benchmark_nodata = src1.nodata
-        benchmark_crs    = src1.crs
-        b_profile        = src1.profile.copy()
-        raw_benchmark    = src1.read(1)
+        benchmark_crs = src1.crs
+        b_profile = src1.profile.copy()
+        raw_benchmark = src1.read(1)
 
         # Getting the correct geometry shape and crs to extract PWB
         boundary_shape = shape(bounding_geom[0])
         boundary_gdf = gpd.GeoDataFrame(geometry=[boundary_shape], crs=benchmark_crs)
 
-    # 1b. Convert to binary BEFORE masking: flooded → 2, everything else → 0.
-    #     First zero out any nodata pixels so they don't become class 2.
+    # Convert to binary BEFORE masking: flooded → 2, everything else → 0.
+    # First zero out any nodata pixels so they don't become class 2.
     if benchmark_nodata is not None:
         raw_benchmark = np.where(raw_benchmark == benchmark_nodata, 0, raw_benchmark)
     benchmark_binary = np.where(raw_benchmark > 0, 2, 0).astype(np.uint8)
 
-    # 1c. Write the binary raster into a MemoryFile, then mask with the AOI geometry.
-    #     nodata=255 so pixels outside the AOI boundary are filled with 255 (not 0),
-    #     which lets us reliably distinguish "outside AOI" from "inside but dry (0)".
+    # Write the binary raster into a MemoryFile, then mask with the AOI geometry; nodata=255 so pixels outside the AOI boundary are filled with 255 (not 0), which lets us reliably distinguish "outside AOI" from "inside but dry (0)".
     b_profile.update(
-        driver='GTiff',
-        dtype='uint8',
+        driver="GTiff",
+        dtype="uint8",
         nodata=255,
         count=1,
     )
@@ -202,13 +191,13 @@ def evaluateFIM(
             )
 
     # Squeeze to 2D (H, W) immediately — all subsequent ops work in 2D
-    out_image1 = np.squeeze(out_image1).astype(np.uint8)   # shape: (H, W)
+    out_image1 = np.squeeze(out_image1).astype(np.uint8)  # shape: (H, W)
 
-    # 1d. AOI validity mask: True only for pixels INSIDE the AOI (not the 255 fill)
-    aoi_valid_b = (out_image1 != 255)                       # shape: (H, W)
+    # AOI validity mask: True only for pixels INSIDE the AOI (not the 255 fill)
+    aoi_valid_b = out_image1 != 255  # shape: (H, W)
 
-    # 1e. Remove permanent water bodies ONLY within the valid AOI area.
-    #     If PWB_Dir is provided, use the local PWB shapefile, else download from ArcGIS API.
+    # Remove permanent water bodies ONLY within the valid AOI area.
+    # If PWB_Dir is provided, use the local PWB shapefile, else download from ArcGIS API.
     if PWB_Dir is not None:
         gdf = gpd.read_file(PWB_Dir)
     else:
@@ -221,16 +210,19 @@ def evaluateFIM(
     pwb_mask_b = features.geometry_mask(
         shapes1,
         transform=out_transform1,
-        invert=True,                             # True → pixels INSIDE PWB polygons
-        out_shape=out_image1.shape,              # (H, W)
+        invert=True,  # True → pixels INSIDE PWB polygons
+        out_shape=out_image1.shape,  # (H, W)
     )
     out_image1[pwb_mask_b & aoi_valid_b] = 0
     benchmark_wet_count = int(np.sum((out_image1 == 2) & aoi_valid_b))
     benchmark_dry_count = int(np.sum((out_image1 == 0) & aoi_valid_b))
     wet_to_dry_ratio = (
-        benchmark_wet_count / benchmark_dry_count if benchmark_dry_count > 0 else float("inf"))
+        benchmark_wet_count / benchmark_dry_count
+        if benchmark_dry_count > 0
+        else float("inf")
+    )
 
-    # 1f. Save the benchmark raster (classes: 0, 2; nodata=255)
+    # Save the benchmark raster (classes: 0, 2; nodata=255)
     benchmark_basename = os.path.basename(benchmark_path).split(".")[0]
     clipped_dir = os.path.join(save_dir, "MaskedFIMwithBoundary")
     os.makedirs(clipped_dir, exist_ok=True)
@@ -243,8 +235,10 @@ def evaluateFIM(
     )
     with rasterio.open(clipped_benchmark, "w", **b_profile) as dst:
         dst.write(out_image1, 1)
-    print(f"Benchmark saved → {clipped_benchmark}  "
-          f"unique values: {np.unique(out_image1)}")
+    print(
+        f"Benchmark saved: {clipped_benchmark}  "
+        f"unique values: {np.unique(out_image1)}"
+    )
 
     def resize_image(
         source_image,
@@ -266,38 +260,39 @@ def evaluateFIM(
         )
         return target_image
 
-    # -------------------------------------------------------------------------
-    # Step 2 – Read and process each CANDIDATE raster
-    # -------------------------------------------------------------------------
     for idx, candidate_path in enumerate(candidate_paths):
         base_name = os.path.splitext(os.path.basename(candidate_path))[0]
 
         with rasterio.open(candidate_path) as src2:
             candidate_nodata = src2.nodata
-            candidate_crs    = src2.crs
-            candidate_meta   = src2.meta.copy()
-            raw_candidate    = src2.read(1)
+            candidate_crs = src2.crs
+            candidate_meta = src2.meta.copy()
+            raw_candidate = src2.read(1)
 
-        # 2a. Convert to binary BEFORE masking: flooded → 2, non-flooded → 1.
-        #     Zero out nodata pixels first so they don't become class 2 or 1.
+        # Convert to binary BEFORE masking: flooded → 2, non-flooded → 1.
+        # Zero out nodata pixels first so they don't become class 2 or 1.
         if candidate_nodata is not None:
-            raw_candidate = np.where(raw_candidate == candidate_nodata, 0, raw_candidate)
+            raw_candidate = np.where(
+                raw_candidate == candidate_nodata, 0, raw_candidate
+            )
         candidate_binary = np.where(raw_candidate > 0, 2, 1).astype(np.uint8)
 
-        # 2b. Write the binary candidate into a MemoryFile and reproject to
-        #     benchmark CRS before masking.
-        candidate_meta.update(dtype='uint8', nodata=255, count=1)
+        # Write the binary candidate into a MemoryFile and reproject to benchmark CRS before masking.
+        candidate_meta.update(dtype="uint8", nodata=255, count=1)
         with MemoryFile() as memfile_src:
             with memfile_src.open(**candidate_meta) as mem_src:
                 mem_src.write(candidate_binary, 1)
 
-                # 2c. Compute reprojection parameters to match benchmark CRS
-                dst_transform, dst_width, dst_height = \
+                # Compute reprojection parameters to match benchmark CRS
+                dst_transform, dst_width, dst_height = (
                     rasterio.warp.calculate_default_transform(
-                        mem_src.crs, benchmark_crs,
-                        mem_src.width, mem_src.height,
+                        mem_src.crs,
+                        benchmark_crs,
+                        mem_src.width,
+                        mem_src.height,
                         *mem_src.bounds,
                     )
+                )
                 reproj_meta = mem_src.meta.copy()
                 reproj_meta.update(
                     crs=benchmark_crs,
@@ -306,8 +301,7 @@ def evaluateFIM(
                     height=dst_height,
                 )
 
-                # 2d. Reproject into a second MemoryFile (now in benchmark CRS),
-                #     then mask with the AOI geometry (nodata=255 for outside pixels)
+                # Reproject into a second MemoryFile (now in benchmark CRS), then mask with the AOI geometry (nodata=255 for outside pixels)
                 with MemoryFile() as memfile_reproj:
                     with memfile_reproj.open(**reproj_meta) as mem_reproj:
                         for band_i in range(1, mem_src.count + 1):
@@ -321,32 +315,35 @@ def evaluateFIM(
                                 resampling=Resampling.nearest,
                             )
 
-                        # 2e. Mask (crop) the reprojected candidate to the AOI geometry
+                        # Mask (crop) the reprojected candidate to the AOI geometry
                         out_image2, out_transform2 = mask(
-                            mem_reproj, bounding_geom, crop=True, all_touched=True, nodata=255
+                            mem_reproj,
+                            bounding_geom,
+                            crop=True,
+                            all_touched=True,
+                            nodata=255,
                         )
 
         # Squeeze to 2D (H, W) — consistent with out_image1 which is also 2D
-        out_image2 = np.squeeze(out_image2).astype(np.uint8)   # shape: (H2, W2)
+        out_image2 = np.squeeze(out_image2).astype(np.uint8)  # shape: (H2, W2)
 
-        # 2f. AOI validity mask for the candidate: True = inside AOI (not the 255 fill).
-        #     Without this guard, PWB polygons that straddle the boundary would
-        #     stamp 5 onto outside-AOI pixels, corrupting the confusion raster.
-        aoi_valid_c = (out_image2 != 255)                       # shape: (H2, W2)
+        # AOI validity mask for the candidate: True = inside AOI (not the 255 fill). Without this guard, PWB polygons that straddle the boundary would stamp 5 onto outside-AOI pixels, corrupting the confusion raster.
+        aoi_valid_c = out_image2 != 255  # shape: (H2, W2)
 
-        # 2g. Classify permanent-water-body pixels as 5, ONLY inside the AOI.
-        #     shapes1 and gdf are already reprojected to benchmark_crs above.
+        # Classify permanent-water-body pixels as 5, ONLY inside the AOI shapes1 and gdf are already reprojected to benchmark_crs above.
         pwb_mask_c = features.geometry_mask(
             shapes1,
             transform=out_transform2,
-            invert=True,                         # True → pixels INSIDE PWB polygons
-            out_shape=out_image2.shape,          # (H2, W2)
+            invert=True,  # True - pixels INSIDE PWB polygons
+            out_shape=out_image2.shape,  # (H2, W2)
         )
         out_image2[pwb_mask_c & aoi_valid_c] = 5
 
-        # 2h. Save the clipped candidate raster
+        # Save the clipped candidate raster
         candidate_basename = os.path.basename(candidate_path).split(".")[0]
-        clipped_candidate = os.path.join(clipped_dir, f"{candidate_basename}_clipped.tif")
+        clipped_candidate = os.path.join(
+            clipped_dir, f"{candidate_basename}_clipped.tif"
+        )
         c_profile = b_profile.copy()
         c_profile.update(
             height=out_image2.shape[0],
@@ -356,34 +353,28 @@ def evaluateFIM(
         with rasterio.open(clipped_candidate, "w", **c_profile) as dst:
             dst.write(out_image2, 1)
 
-        # 2i. Align (snap) the 2D candidate onto the benchmark 2D pixel grid.
-        #     resize_image fills unsampled destination pixels with 0; zeroing
-        #     them via aoi_valid_b afterward prevents spurious class-1 entries
-        #     at the edges of the confusion raster.
+        # Align (snap) the 2D candidate onto the benchmark 2D pixel grid resize_image fills unsampled destination pixels with 0; zeroing them via aoi_valid_b afterward prevents spurious class-1 entries at the edges of the confusion raster.
         out_image2_aligned = resize_image(
-            out_image2, out_transform2, benchmark_crs,
-            benchmark_crs, out_image1.shape, out_transform1,
-        )                                                        # shape: (H, W)
+            out_image2,
+            out_transform2,
+            benchmark_crs,
+            benchmark_crs,
+            out_image1.shape,
+            out_transform1,
+        )  # shape: (H, W)
         out_image2_aligned[~aoi_valid_b] = 0
 
-        # Also zero outside-AOI pixels in a clean copy of the benchmark so that
-        # outside locations sum to 0+0=0 (excluded) not a spurious class.
+        # Also zero outside-AOI pixels in a clean copy of the benchmark so that outside locations sum to 0+0=0 (excluded) not a spurious class.
         out_image1_clean = out_image1.copy()
         out_image1_clean[~aoi_valid_b] = 0
 
-        # 2j. Add benchmark + candidate to produce the confusion / contingency raster.
-        #     Both arrays are 2D (H, W) with outside-AOI pixels zeroed.
-        #     Class arithmetic:
-        #       0 (bench non-flood) + 1 (cand non-flood) = 1  → TN
-        #       0 (bench non-flood) + 2 (cand flood)     = 2  → FP
-        #       2 (bench flood)     + 1 (cand non-flood) = 3  → FN
-        #       2 (bench flood)     + 2 (cand flood)     = 4  → TP
-        #       bench==5 OR cand==5  (PWB)               → 5  → PWB
-        merged1 = out_image1_clean.astype(np.uint8) + out_image2_aligned.astype(np.uint8)
-        merged  = np.where(merged1 >= 5, 5, merged1).astype(np.uint8)
+        merged1 = out_image1_clean.astype(np.uint8) + out_image2_aligned.astype(
+            np.uint8
+        )
+        merged = np.where(merged1 >= 5, 5, merged1).astype(np.uint8)
         print(f"Confusion raster unique values: {np.unique(merged)}")
 
-        # 2k. Get Evaluation Metrics
+        # Get Evaluation Metrics
         (
             unique_values,
             TN,

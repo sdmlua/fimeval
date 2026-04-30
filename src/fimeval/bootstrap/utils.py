@@ -147,6 +147,8 @@ def plot_metric_boxplots(
         fontsize=14,
         fontname="Arial",
     )
+    ax.set_ylim(0, 1)
+    ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     plt.grid(True, linestyle="--", alpha=0.6)

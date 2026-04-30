@@ -109,10 +109,12 @@ def getContingencyMap(raster_path, method_path):
     # Base name of the raster file
     base_name = os.path.basename(raster_path).split(".")[0]
     output_path = os.path.join(plot_dir, f"{base_name}.png")
+    fig = plt.gcf()
     plt.savefig(output_path, dpi=500, bbox_inches="tight")
-    plt.show(block=False)
-    plt.pause(5.0)
-    plt.close()
+    timer = fig.canvas.new_timer(interval=5000)
+    timer.add_callback(plt.close, fig)
+    timer.start()
+    plt.show(block=True)
 
 
 def PrintContingencyMap(main_dir, method_name, out_dir):
