@@ -129,7 +129,7 @@ def plot_metric_boxplots(
     """
     Create boxplots for selected metrics across bootstrap iterations.
     """
-    plt.rcParams["font.family"] = "Arial"
+    plt.rcParams["font.family"] = "sans-serif"
     fig, ax = plt.subplots(figsize=(6, 3))
     metrics = list(metrics)
 
@@ -141,11 +141,11 @@ def plot_metric_boxplots(
         medianprops=dict(color="crimson", linewidth=1),
     )
 
-    ax.set_ylabel("Metric Value", fontsize=12, fontname="Arial")
+    ax.set_ylabel("Metric Value", fontsize=12, fontname="sans-serif")
     ax.set_title(
         f"Bootstrap Metric Distribution ({sampling_type})",
         fontsize=14,
-        fontname="Arial",
+        fontname="sans-serif",
     )
     ax.set_ylim(0, 1)
     ax.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
@@ -153,7 +153,7 @@ def plot_metric_boxplots(
     plt.yticks(fontsize=12)
     plt.grid(True, linestyle="--", alpha=0.6)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
-        label.set_fontname("Arial")
+        label.set_fontname("sans-serif")
     plt.tight_layout()
 
     if output_folder:

@@ -562,12 +562,19 @@ def _record_download_dirname(rec: Dict[str, Any]) -> str:
     return "benchmark_record"
 
 
-def download_fim_assets(record: Dict[str, Any], dest_dir: str) -> Dict[str, Any]:
+def download_fim_assets(
+    record: Dict[str, Any], dest_dir: str, flat: bool = False
+) -> Dict[str, Any]:
     """
-    Download the .tif (if present) and any .gpkg from the record's folder into a
-    dedicated per-record subdirectory under dest_dir.
+    Download the .tif (if present) and any .gpkg from the record's folder.
+
+    When flat=False (default), files go into a per-record subdirectory under dest_dir.
+    When flat=True, files are placed directly in dest_dir with no subdirectory.
     """
-    record_dir = os.path.join(dest_dir, _record_download_dirname(record))
+    if flat:
+        record_dir = dest_dir
+    else:
+        record_dir = os.path.join(dest_dir, _record_download_dirname(record))
     os.makedirs(record_dir, exist_ok=True)
     out = {"record_dir": record_dir, "tif": None, "gpkg_files": []}
 

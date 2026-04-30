@@ -38,16 +38,16 @@ out_dir:
 
 def test_benchmark_fimquery():
     response = fe.benchFIMquery(
-        # raster_path=raster_path,
-        boundary_path=boundary_path,
+        raster_path=raster_path,
+        # boundary_path=boundary_path,
         # huc8="03020201",  # Example HUC8 ID: "03020202"
-        # event_date = "2017-05-01",
-        # start_date = "2017-04-01",
+        # event_date = "2016-05-01",
+        # start_date = "2016-04-01",
         # end_date = "2026-01-01",
-        # file_name = "BLE_10_0m_500_985556W300139N_BM.tif",
+        file_name="HWM_10_0m_20160928_20161009_780051W352232N_BM.tif",
         # tier = "tier4",  # Example tier filter: "HWM", "Tier1", "Tier2", etc.
-        area=True,  # Default is false; if True, returns overlap stats
-        # download=True,
+        # area=True,  # Default is false; if True, returns overlap stats
+        download=True,
         # out_dir="../downloads/",  # required if download=True
     )
     print(response)

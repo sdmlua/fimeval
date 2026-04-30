@@ -209,7 +209,7 @@ def GetFloodedBuildingCountInfo(
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         showlegend=True,
-        font=dict(family="Arial", size=18, color="black"),
+        font=dict(family="sans-serif", size=18, color="black"),
     )
     fig.show()
 
@@ -255,7 +255,15 @@ def GetFloodedBuildingCountInfo(
 
     # Left panel
     colors_left = ["#1c83eb", "#a4490e"]
-    sns.barplot(data=df_left, x="Category", y="Count", ax=ax0, palette=colors_left)
+    sns.barplot(
+        data=df_left,
+        x="Category",
+        y="Count",
+        hue="Category",
+        palette=colors_left,
+        legend=False,
+        ax=ax0,
+    )
     style_axes(ax0, "Building Counts on Different FIMs", "Inundation Surface", True)
     for c in ax0.containers:
         ax0.bar_label(
@@ -264,7 +272,15 @@ def GetFloodedBuildingCountInfo(
 
     # Right panel
     colors_right = ["#ff5733", "#ffc300", "#28a745"]
-    sns.barplot(data=df_right, x="Category", y="Count", ax=ax1, palette=colors_right)
+    sns.barplot(
+        data=df_right,
+        x="Category",
+        y="Count",
+        hue="Category",
+        palette=colors_right,
+        legend=False,
+        ax=ax1,
+    )
     style_axes(ax1, "Contingency Flooded Building Counts", "Category", False)
     for c in ax1.containers:
         ax1.bar_label(

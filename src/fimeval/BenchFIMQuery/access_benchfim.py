@@ -581,19 +581,37 @@ class benchFIMquery:
         tier: filter by data tier. Accepts flexible formats: 'HWM', 'hwm',
               'Tier1', 'tier_1', 'Tier 1', 'Tier_2', 'tier3', 'Tier_4', etc.
         area: if True and AOI is given, compute overlap % and km².
-        download: if True, download matched rasters/GPKGs to out_dir.
-        out_dir: target directory for downloads (required if download=True).
+        download: if True, download matched rasters/GPKGs.
+        out_dir: target directory for downloads. When omitted with download=True,
+                 the parent directory of raster_path or boundary_path is used.
+                 When file_name + out_dir are both given, the tif and gpkg are
+                 placed directly in out_dir (no per-record subdirectory).
         """
-        # Validate download args
-        if download and not out_dir:
-            return PrettyDict(
-                {
-                    "status": "error",
-                    "message": "When download=True, you must provide out_dir.",
-                    "matches": [],
-                    "printable": "",
-                }
-            )
+        # Resolve the download directory when download=True.
+        # Priority:
+        #   1. out_dir (explicit)
+        #   2. parent directory of raster_path or boundary_path
+        #   3. error – ask the user to provide one of the above
+        resolved_out_dir: Optional[str] = None
+        if download:
+            if out_dir:
+                resolved_out_dir = out_dir
+            elif raster_path:
+                resolved_out_dir = str(Path(raster_path).parent)
+            elif boundary_path:
+                resolved_out_dir = str(Path(boundary_path).parent)
+            else:
+                return PrettyDict(
+                    {
+                        "status": "error",
+                        "message": (
+                            "When download=True you must supply at least one of: "
+                            "out_dir, raster_path, or boundary_path."
+                        ),
+                        "matches": [],
+                        "printable": "",
+                    }
+                )
 
         # Build AOI geometry from raster or boundary
         aoi_geom: Optional[Polygon] = None
@@ -609,17 +627,16 @@ class benchFIMquery:
 
         file_names = _normalize_file_name_input(file_name)
 
-        # Direct filename download: file_name with download=True, no AOI or dates
-        if (
-            file_names
-            and download
-            and aoi_geom is None
-            and not any([event_date, start_date, end_date])
-        ):
+        # When file_name + download are both given, always download flat (tif + gpkg
+        # directly into the destination folder, no per-record subdirectory), regardless
+        # of what other filters or paths are also present. raster_path/boundary_path
+        # only serve as the download directory source in this case, not as an AOI filter.
+        if file_names and download:
             recs = self.records
             downloaded_matches: List[Dict[str, Any]] = []
             not_found: List[str] = []
-            out_dir_path = _ensure_dir(out_dir)
+            out_dir_path = _ensure_dir(resolved_out_dir)
+            use_flat = True
 
             for fname in file_names:
                 if huc8:
@@ -646,7 +663,7 @@ class benchFIMquery:
                     continue
 
                 target = candidates[0]
-                dl = download_fim_assets(target, str(out_dir_path))
+                dl = download_fim_assets(target, str(out_dir_path), flat=use_flat)
                 downloaded_matches.append(
                     {
                         "record": target,
@@ -751,7 +768,7 @@ class benchFIMquery:
             ]
 
             if download:
-                out_dir_path = _ensure_dir(out_dir)
+                out_dir_path = _ensure_dir(resolved_out_dir)
                 for m in matches:
                     m["downloads"] = download_fim_assets(m["record"], str(out_dir_path))
                 msg = f"Downloaded {len(matches)} benchmark record(s) to '{out_dir_path}'."
@@ -797,7 +814,7 @@ class benchFIMquery:
 
         out_matches: List[Dict[str, Any]] = []
         area_stats: List[Tuple[Optional[float], Optional[float]]] = []
-        out_dir_path = _ensure_dir(out_dir) if (download and out_dir) else None
+        out_dir_path = _ensure_dir(resolved_out_dir) if download else None
 
         for rec in intersecting:
             intersection_area_pct: Optional[float] = None

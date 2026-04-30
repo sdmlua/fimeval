@@ -2,7 +2,7 @@ import fimeval as fe
 from pathlib import Path
 import os
 
-Main_dir = "./path/to/Main_Directory"  # This is the main directory where all the cases are stored. It should have subfolders for each case and inside each case folder, there should be the FIMs to be evaluated. The structure should be like this: Main_Directory/Case1/FIMs, Main_Directory/Case2/FIMs, and so on.
+Main_dir = "path/to/main/directory"  # This is the main directory where all the cases are stored. It should have subfolders for each case and inside each case folder, there should be the FIMs to be evaluated. The structure should be like this: Main_Directory/Case1/FIMs, Main_Directory/Case2/FIMs, and so on.
 PWD_dir = "./path/to/PWB"
 output_dir = "./path/to/Output_Directory"  # This is the output directory where the results will be saved
 target_crs = "EPSG:5070"  # Target CRS for reprojecting the FIMs, need to be in EPSG code of Projected CRS. If it is within CONUS it will automatically take EPSG:5070
@@ -33,7 +33,10 @@ and appropritate decidede benchmark FIM file as a value(got from the query).
 
 If some cases already have benchmark; do not need to add them here.
 """
-benchmark_dict = {"HUC11110203_AR": "AI_0_4m_20160103_923809W350109N_BM.tif"}
+benchmark_dict = {
+    "area1": "PSS_3_1m_20161014T150759_780013W352043N_BM.tif",
+    "area2": "HWM_10_0m_20160928_20161009_780051W352232N_BM.tif",
+}
 
 
 def test_evaluation_framework():
@@ -48,7 +51,7 @@ def test_evaluation_framework():
     fe.EvaluateFIM(
         Main_dir, method, output_dir, target_crs=target_crs, shapefile_dir=AOI
     )
-    fe.EvaluateFIM(Main_dir, benchmark_dict=benchmark_dict)
+    fe.EvaluateFIM(Main_dir, method_name=method, benchmark_dict=benchmark_dict)
 
     # Run bootstrap
     """
@@ -83,6 +86,7 @@ def test_evaluation_framework():
         Main_dir,
         method,
         output_dir,
+        benchmark_dict=benchmark_dict,
         target_crs=target_crs,
         target_resolution=target_resolution,
         shapefile_dir=AOI,

@@ -67,8 +67,8 @@ def PlotMetrics(csv_path, method_path):
             width=900,
             xaxis=dict(showline=True, linewidth=2, linecolor="black", title="Score"),
             yaxis=dict(showline=True, linewidth=2, linecolor="black"),
-            title_font=dict(family="Arial", size=24, color="black"),
-            font=dict(family="Arial", size=18, color="black"),
+            title_font=dict(family="sans-serif", size=24, color="black"),
+            font=dict(family="sans-serif", size=18, color="black"),
         )
         fig_plotly.show()
 
