@@ -1,11 +1,14 @@
-## Flood Inundation Mapping Predictions Evaluation Framework (FIMeval)
-<hr style="border: 1px solid black; margin: 0;">  
-
-[![Version](https://img.shields.io/github/v/release/sdmlua/fimeval)](https://github.com/sdmlua/fimeval/releases)
-[![Issues](https://img.shields.io/github/issues/sdmlua/fimeval)](https://github.com/sdmlua/fimeval/issues)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://opensource.org/licenses/GPL-3.0)
-[![PyPI version](https://badge.fury.io/py/fimeval.svg?icon=si%3Apython)](https://badge.fury.io/py/fimeval)
-[![PyPI Downloads](https://static.pepy.tech/badge/fimeval)](https://pepy.tech/projects/fimeval)
+<div align="center">
+  <img src="Images/fimeval.png" alt="fimbox" width="200" />
+  <h2>Flood Inundation Mapping Predictions Evaluation Framework (FIMeval)</h2>
+  <p>
+    <a href="https://github.com/sdmlua/fimeval/releases"><img src="https://img.shields.io/github/v/release/sdmlua/fimeval" alt="Version" /></a>
+    <a href="https://github.com/sdmlua/fimeval/issues"><img src="https://img.shields.io/github/issues/sdmlua/fimeval" alt="Issues" /></a>
+    <a href="https://opensource.org/licenses/GPL-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3" /></a><br>
+    <a href="https://badge.fury.io/py/fimeval"><img src="https://badge.fury.io/py/fimeval.svg?icon=si%3Apython" alt="PyPI version" /></a>
+    <a href="https://pepy.tech/projects/fimeval"><img src="https://static.pepy.tech/badge/fimeval" alt="PyPI Downloads" /></a>
+  </p>
+</div>
 
 | | |
 | --- | --- |
