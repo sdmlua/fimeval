@@ -1,6 +1,6 @@
 [project]
 name = "fimeval"
-version = "0.1.64"
+version = "0.1.65"
 description = "A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,6 +38,9 @@ dev = [
   "pytest",
   "black"
 ]
+
+[project.urls]
+"Surface Dynamics Modeling Lab" = "https://sdml.ua.edu/"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

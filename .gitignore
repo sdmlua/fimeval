@@ -1,1 +1,48 @@
+# macOS
 .DS_Store
+
+# Byte-compiled / optimized / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Packaging / build artifacts (dist/ intentionally tracked)
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# Test / coverage
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# Type checkers / linters
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+
+# Environment variables / secrets
+.env
+.env.*

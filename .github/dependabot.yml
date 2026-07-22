@@ -1,0 +1,20 @@
+updates:
+  # Python dependencies (reads pyproject.toml)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      all-deps:            # creating PRs for all dependencies
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  # Keep GitHub Actions versions current too
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
