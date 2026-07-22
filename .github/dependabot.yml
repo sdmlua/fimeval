@@ -1,3 +1,4 @@
+version: 2
 updates:
   # Python dependencies (reads pyproject.toml)
   - package-ecosystem: "pip"
