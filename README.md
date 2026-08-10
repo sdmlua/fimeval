@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="Images/fimeval.png" alt="fimbox" width="200" />
+  <img src="Images/fimeval.png" alt="fimbox" width="170" />
   <h2>Flood Inundation Mapping Predictions Evaluation Framework (FIMeval)</h2>
   <p>
     <a href="https://github.com/sdmlua/fimeval/releases"><img src="https://img.shields.io/github/v/release/sdmlua/fimeval" alt="Version" /></a>
@@ -12,7 +12,7 @@
 
 | | |
 | --- | --- |
-| <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_grey.png" alt="SDML Logo" width="300"></a> | This repository provides a user-friendly Python package and source code for the automatic evaluation of flood inundation maps. It is developed under Surface Dynamics Modeling Lab (SDML), Department of Geography and the Environment at The University of Alabama, United States.
+| <a href="https://sdml.ua.edu"><img src="https://sdml.ua.edu/wp-content/uploads/2023/01/SDML_logo_Sq_low.png" alt="SDML Logo" width="300"></a> | This repository provides a user-friendly Python package and source code for the automatic evaluation of flood inundation maps. It is developed under Surface Dynamics Modeling Lab (SDML), Department of Geography and the Environment at The University of Alabama, United States.
  
 
 ### **Background**
@@ -201,6 +201,62 @@ conda activate fimeval
 pip install uv
 uv pip install fimeval
 ```
+
+### Desktop Application (GUI Version)
+<hr style="border: 1px solid black; margin: 0;">  
+
+For users who prefer not to write Python code, `fimeval` is also distributed as a standalone desktop application for **macOS** and **Windows**. The GUI bundles the same modules described in **Table 1**.
+
+
+#### 1. Download
+
+All installers, test data, and the installation instructions are hosted on Shared Box: **[Download FIMeval Executables (Box)](https://alabama.app.box.com/s/3gwg7aqzqgyk9udt4d3sa4x2aww1fpa8)**
+
+The shared folder is organized as follows:
+
+```bash
+FIMeval_Executables/
+├── Executables/
+│   ├── Mac/
+│   │   └── FIMeval_macOS.dmg                                     # macOS installer
+│   └── Windows/
+│       └── Setup/
+│           └── FIMeval.exe                                       # Windows installer
+├── Test_data/                                                    # Ready-to-run sample case study
+│   ├── PSS_3_1m_20161014T150759_780013W352043N_BM.tif            # Benchmark FIM (B-FIM)
+│   ├── hand_NWM_20161014150000_03020201_inundation.tif           # Model FIM (M-FIM)
+│   └── SMprediction_hand_NWM_20161014150000_03020201_inundation-2.tif
+└── Installation_instructions_FIMeval.pdf                         # Instructions
+```
+
+Download the folder for your operating system plus the `Test_data` folder.
+
+
+#### 2. Run an Evaluation
+
+After installing the application, the window has four tabs — **Setup**, **Method**, **Bootstrap**, **Results** — with a live console at the bottom and the action buttons along the footer.
+
+(i). **Setup tab** — set the inputs (fields marked `*` are required):
+
+   | Field | Description |
+   |---|---|
+   | `Main Directory *` | Folder containing the case study (see [Main Directory Structure](#main-directory-structure)). Point this at the downloaded `Test_data` folder for a first run. |
+   | `Permanent Water Body Dir` | Optional user-supplied PWB vector file (`.shp` / `.gpkg`). Leave blank to use the built-in CONUS PWB dataset. |
+   | `Output Directory *` | Where results and intermediate files are written. |
+   | `Target CRS` | Projected EPSG code, e.g. `EPSG:5070` for CONUS. Leave blank to auto-detect. |
+   | `Target Resolution (m)` | Resampling resolution, e.g. `10`. Leave blank to use the coarsest input resolution. |
+
+(ii). **Method tab** — choose the flood-extent method (`smallest_extent`, `convex_hull`, `AOI`, `intersected_extent`) and supply the AOI vector file if using `AOI`.
+(iii). **Bootstrap tab** — optional; set the sampling method (`random`, `systematic`, `stratified`) and its controls (iterations, points, spacing, seed).
+(iv). Click an action button:
+   - **Run Evaluation** — equivalent to `EvaluateFIM`
+   - **Run Bootstrap** — bootstrap-based evaluation
+   - **Print Contingency Maps** — equivalent to `PrintContingencyMap`
+   - **Plot Evaluation Metrics** — equivalent to `PlotEvaluationMetrics`
+   - **Building Footprint Analysis** — equivalent to `EvaluationWithBuildingFootprint`
+(v). Progress is streamed to the **Console Output** panel; outputs appear under the **Results** tab and in the chosen output directory, using the same folder layout described in **Table 1**.
+
+**!! Note:** In the supplied `Test_data`, the benchmark raster is identified by the `_BM` token in its filename. Any raster you add must follow the same convention — the benchmark file name must contain either `benchmark` or a `BM` token, and all other `.tif` files in the folder are treated as model FIMs.
 
 ### Google Colab Version
 <hr style="border: 1px solid black; margin: 0;">  
