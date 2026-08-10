@@ -247,13 +247,16 @@ After installing the application, the window has four tabs — **Setup**, **Meth
    | `Target Resolution (m)` | Resampling resolution, e.g. `10`. Leave blank to use the coarsest input resolution. |
 
 (ii). **Method tab** — choose the flood-extent method (`smallest_extent`, `convex_hull`, `AOI`, `intersected_extent`) and supply the AOI vector file if using `AOI`.
+
 (iii). **Bootstrap tab** — optional; set the sampling method (`random`, `systematic`, `stratified`) and its controls (iterations, points, spacing, seed).
+
 (iv). Click an action button:
    - **Run Evaluation** — equivalent to `EvaluateFIM`
    - **Run Bootstrap** — bootstrap-based evaluation
    - **Print Contingency Maps** — equivalent to `PrintContingencyMap`
    - **Plot Evaluation Metrics** — equivalent to `PlotEvaluationMetrics`
    - **Building Footprint Analysis** — equivalent to `EvaluationWithBuildingFootprint`
+   
 (v). Progress is streamed to the **Console Output** panel; outputs appear under the **Results** tab and in the chosen output directory, using the same folder layout described in **Table 1**.
 
 **!! Note:** In the supplied `Test_data`, the benchmark raster is identified by the `_BM` token in its filename. Any raster you add must follow the same convention — the benchmark file name must contain either `benchmark` or a `BM` token, and all other `.tif` files in the folder are treated as model FIMs.
