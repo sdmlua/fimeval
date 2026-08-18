@@ -1,20 +1,20 @@
 [project]
 name = "fimeval"
-version = "0.1.65"
+version = "0.1.66"
 description = "A Framework for Automatic Evaluation of Flood Inundation Mapping Predictions Evaluation"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE.txt" }
 
 authors = [
-  { name = "Surface Dynamics Modeling Lab" },
+  { name = "Surface Dynamics Modeling Lab", email = "sagy.cohen@ua.edu" },
   { name = "Supath Dhital", email = "sdhital@crimson.ua.edu" },
-  { name = "Dipshika Devi", email = "ddevi@ua.edu" }
+  { name = "Dipsikha Devi", email = "ddevi@ua.edu" }
 ]
 
 maintainers = [
   { name = "Supath Dhital", email = "sdhital@crimson.ua.edu" },
-  { name = "Dipshika Devi", email = "ddevi@ua.edu" }
+  { name = "Dipsikha Devi", email = "ddevi@ua.edu" }
 ]
 
 dependencies = [
@@ -40,6 +40,8 @@ dev = [
 ]
 
 [project.urls]
+"Homepage" = "https://sdml.ua.edu/"
+"Source" = "https://github.com/sdmlua/FIMEVAL"
 "Surface Dynamics Modeling Lab" = "https://sdml.ua.edu/"
 
 [tool.setuptools]
