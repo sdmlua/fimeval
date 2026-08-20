@@ -7,7 +7,7 @@ from .ContingencyMap.water_bodies import get_PWB, ExtractPWB
 # Utility modules
 from .utilis import compress_tif_lzw
 
-# Evaluation with Building foorprint module
+# Evaluation with Building foorprint modules
 from .BuildingFootprint.evaluationwithBF import EvaluationWithBuildingFootprint
 
 # Access benchmark FIM module
